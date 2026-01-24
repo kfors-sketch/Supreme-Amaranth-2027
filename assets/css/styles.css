@@ -23,7 +23,7 @@ html,body{
   content: "";
   position: fixed;
   inset: 0;
-  background-image: var(--wallpaper, url('/assets/img/wallpaper.jpg'));
+  background-image: var(--wallpaper, url('/assets/img/supreme-2027-watermark.jpg'));
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -107,7 +107,7 @@ nav a{ font-weight:500; }
 
 /* Default wallpaper (used on desktop + landscape) */
 .wallpaper::before {
-  background-image: url('/assets/img/wallpaper.jpg');
+  background-image: url('/assets/img/supreme-2027-watermark.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -116,7 +116,7 @@ nav a{ font-weight:500; }
 /* Portrait override (mobile vertical) */
 @media (max-aspect-ratio: 3/4) {
   .wallpaper::before {
-    background-image: url('/assets/img/wallpaper-portrait.jpg'); /* different image for phones */
+    background-image: url('/assets/img/supreme-2027-watermark.jpg'); /* different image for phones */
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
