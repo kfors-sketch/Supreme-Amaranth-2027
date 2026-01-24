@@ -1,0 +1,233 @@
+/* =========================
+   Base & Layout
+========================= */
+*{box-sizing:border-box}
+html,body{
+  margin:0;
+  padding:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:#1f2937;
+  background:transparent;
+  min-height:100vh;
+  height:100%;
+}
+
+/* ===== Full-screen fixed wallpaper (mobile + iOS safe) ===== */
+.wallpaper {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.wallpaper::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--wallpaper, url('/assets/img/wallpaper.jpg'));
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  transform: translateZ(0);
+  will-change: transform;
+}
+.wallpaper::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,0.08);
+  z-index: 0;
+}
+.page, .container, main, body > *:not(.wallpaper) {
+  position: relative;
+  z-index: 1;
+}
+:root { --vh: 100dvh; }
+@supports not (height: 100dvh) {
+  :root { --vh: 100vh; }
+}
+.fullscreen, .hero { min-height: var(--vh); }
+
+/* ===== General site layout ===== */
+.nav{
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:18px;
+  width:100%;
+}
+nav a{ font-weight:500; }
+.nav-toggle{ display:none !important; }
+
+.site-header{
+  position:sticky;
+  top:0;
+  background:transparent !important;
+  border-bottom:0;
+  z-index:10;
+}
+.header-inner{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:.5rem;
+  padding:.75rem 0;
+}
+.logo{
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+  font-weight:700;
+  margin:0 auto;
+}
+.logo img{
+  width: clamp(36px, 3.2vw, 48px);
+  height: clamp(36px, 3.2vw, 48px);
+}
+
+.container{width:min(1100px,92%);margin:0 auto}
+.mt{margin-top:1rem}
+.mt-lg{margin-top:2rem}
+
+/* =========================
+   Page Titles
+========================= */
+.page-title{
+  text-align:center;
+  font-weight:800;
+}
+
+.btn{display:inline-block;padding:.7rem 1rem;border-radius:.5rem;border:1px solid #e5e7eb;background:#f9fafb;cursor:pointer}
+.btn-primary{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+.card{border:1px solid #e5e7eb;border-radius:.75rem;padding:1rem;background:rgba(255,255,255,0.40);box-shadow:0 1px 2px rgba(0,0,0,.03);backdrop-filter:saturate(120%) blur(2px);-webkit-backdrop-filter:saturate(120%) blur(2px)}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
+@media(max-width:800px){.grid-3,.grid-2{grid-template-columns:1fr}}
+
+/* Default wallpaper (used on desktop + landscape) */
+.wallpaper::before {
+  background-image: url('/assets/img/wallpaper.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Portrait override (mobile vertical) */
+@media (max-aspect-ratio: 3/4) {
+  .wallpaper::before {
+    background-image: url('/assets/img/wallpaper-portrait.jpg'); /* different image for phones */
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+  }
+}
+
+/* =========================
+   Admin Help Popups
+========================= */
+
+/* Prevent background scroll while a help modal is open */
+body.help-modal-open{
+  overflow:hidden;
+}
+
+/* Small round help button that sits in card headers, etc. */
+.help-btn{
+  border:none;
+  background:rgba(37,99,235,0.10);
+  color:#1d4ed8;
+  border-radius:999px;
+  width:24px;
+  height:24px;
+  font-size:.85rem;
+  font-weight:600;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  padding:0;
+  margin-left:.25rem;
+}
+.help-btn:hover{
+  background:rgba(37,99,235,0.18);
+}
+.help-btn:focus-visible{
+  outline:2px solid #1d4ed8;
+  outline-offset:2px;
+}
+
+/* Full-screen overlay container created by admin-help.js */
+.help-modal{
+  position:fixed;
+  inset:0;
+  padding:1rem;
+  background:rgba(15,23,42,0.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:50;
+}
+.help-modal.hide{
+  display:none;
+}
+
+/* Centered help dialog */
+.help-modal-dialog{
+  position:relative;
+  max-width:480px;
+  width:100%;
+  background:#ffffff;
+  border-radius:.9rem;
+  box-shadow:0 10px 40px rgba(15,23,42,0.40);
+  padding:1.25rem 1.5rem 1.4rem;
+}
+
+/* Title inside modal */
+.help-title{
+  margin:0 0 .5rem 0;
+  font-size:1.1rem;
+  font-weight:700;
+  color:#111827;
+}
+
+/* Scrollable content area if help text is long */
+.help-modal-body{
+  margin-top:.35rem;
+  font-size:.95rem;
+  line-height:1.5;
+  color:#111827;
+  max-height:60vh;
+  overflow:auto;
+}
+.help-modal-body p{
+  margin:.3rem 0;
+}
+.help-modal-body ul{
+  margin:.4rem 0 .4rem 1.25rem;
+  padding:0;
+}
+.help-modal-body li{
+  margin:.2rem 0;
+}
+
+/* Close “X” button in top-right */
+.help-close{
+  position:absolute;
+  top:.45rem;
+  right:.55rem;
+  border:none;
+  background:transparent;
+  font-size:1.4rem;
+  line-height:1;
+  cursor:pointer;
+  padding:0;
+  color:#6b7280;
+}
+.help-close:hover{
+  color:#111827;
+}
+.help-close:focus-visible{
+  outline:2px solid #1d4ed8;
+  outline-offset:2px;
+}
