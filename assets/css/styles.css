@@ -108,9 +108,10 @@ nav a{ font-weight:500; }
 /* Default wallpaper (used on desktop + landscape) */
 .wallpaper::before {
   background-image: url('/assets/img/supreme-2027-watermark.jpg');
-  background-size: cover;
-  background-position: center;
+  background-size: contain;   /* 👈 key change */
+  background-position: center center;
   background-repeat: no-repeat;
+  background-color: #ffffff; /* or transparent / light gray */
 }
 
 /* Portrait override (mobile vertical) */
