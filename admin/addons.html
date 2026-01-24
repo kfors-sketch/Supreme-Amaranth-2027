@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Add-Ons Manager — Amaranth</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f7f7fb;color:#111;margin:0}
+    .container{max-width:1200px;margin:24px auto;padding:0 16px}
+    .row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+    .col{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:14px}
+    .col.left{flex:2 1 640px;min-width:520px}
+    .col.right{flex:1 1 480px;min-width:420px;position:sticky;top:16px}
+    h1{margin:0 0 10px}
+    .btn{height:36px;border:1px solid #d1d5db;background:#111;color:#fff;border-radius:10px;padding:0 12px;font-weight:700;cursor:pointer}
+    .btn.ghost{background:#fff;color:#111}
+    .btn.warn{background:#b91c1c;border-color:#991b1b}
+    .btn.success{background:#065f46;border-color:#064e3b}
+    input,select,textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:8px;background:#fff}
+    textarea{min-height:80px}
+    label{font-weight:600;margin-top:8px;display:block}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    thead th{background:#fafafa;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:12px;letter-spacing:.04em;text-transform:uppercase;padding:10px;text-align:left;position:sticky;top:0}
+    tbody td{padding:10px;border-bottom:1px solid #f1f2f6;vertical-align:top}
+    .muted{color:#6b7280}
+    .rules{background:#f9fafb;border:1px dashed #d1d5db;border-radius:12px;padding:10px;margin:8px 0 12px}
+    .chip{display:inline-block;border-radius:999px;padding:3px 8px;background:#eef2ff;color:#3730a3;font-weight:600;font-size:12px;margin-right:6px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .right .toolbar{margin-bottom:8px}
+    .hint{font-size:12px;color:#6b7280;margin-top:4px}
+    .danger{color:#b91c1c}
+    .ok{color:#065f46}
+    code{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:1px 6px}
+    .inline{display:flex;gap:10px;align-items:center}
+
+    /* Banquets-like “gap squeeze” so actions fit */
+    td.actions{white-space:nowrap}
+    td.actions .btn{height:34px;padding:0 10px}
+    td.actions .btn + .btn{margin-left:6px}
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div>
+        <h1>Add-Ons Manager</h1>
+        <div class="muted">Create, edit, or retire registration add-ons (directories, pre-reg, love gifts, etc.)</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a class="btn ghost" href="/admin/index.html">← Admin Hub</a>
+        <button id="logoutBtn" class="btn ghost" style="height:34px">Log Out</button>
+      </div>
+    </header>
+
+    <!-- Rules -->
+    <section class="col rules">
+      <strong>Rules & Tips</strong>
+      <ul class="muted" style="margin:8px 0 0 16px">
+        <li><b>ID</b>: lowercase letters, numbers, and dashes only (e.g. <code>pre-reg</code>, <code>directory</code>).</li>
+        <li><b>Type</b>:
+          <code>fixed</code> (one per person),
+          <code>qty</code> (choose quantity),
+          <code>amount</code> (open dollar amount),
+          <code>variantQty</code> (choose from labeled variants).
+        </li>
+        <li><b>Chair Emails</b>: comma-separated. Leave blank if unknown.</li>
+        <li><b>Publish Start/End</b>: local date/time (<code>YYYY-MM-DDTHH:MM</code>) for when the add-on is visible.</li>
+        <li><b>Limit/attendee</b>: optional max a single attendee can purchase for this add-on.</li>
+        <li><b>Report Frequency</b>: controls how often chair reports are sent for this add-on.</li>
+        <li><b>Year-over-year Slot</b>: required label (e.g. <code>Session Directory</code>) to group similar add-ons across years.</li>
+        <li><b>Sort Order</b>: lower numbers show first (admin + public).</li>
+      </ul>
+    </section>
+
+    <div class="row">
+      <!-- List -->
+      <section class="col left">
+        <div class="toolbar">
+          <button id="btnAddNew" class="btn success">+ New Add-On</button>
+          <button id="btnExport" class="btn ghost">Export JSON</button>
+          <label class="btn ghost" for="fileImport" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">Import JSON</label>
+          <input id="fileImport" type="file" accept=".json,application/json" style="display:none" />
+          <button id="btnRefresh" class="btn ghost">Refresh from Server</button>
+          <span id="listMsg" class="muted"></span>
+        </div>
+
+        <div style="overflow:auto;max-height:65vh;margin-top:8px">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:80px">Sort</th>
+                <th style="min-width:160px">Name</th>
+                <th style="min-width:160px">ID</th>
+                <th style="min-width:140px">YoY Slot</th>
+                <th>Type</th>
+                <th>Active</th>
+                <th>Reports</th>
+                <th>Publish Window</th>
+                <th>Chair</th>
+                <th style="min-width:240px">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+          <div class="hint" style="margin-top:8px">
+            Showing <b>active</b> add-ons only. Archiving keeps history for YoY.
+          </div>
+        </div>
+      </section>
+
+      <!-- Editor -->
+      <aside class="col right">
+        <div class="toolbar">
+          <span class="chip" id="modeChip">New</span>
+          <span id="editMsg" class="muted"></span>
+        </div>
+
+        <label for="f_name">Name</label>
+        <input id="f_name" type="text" placeholder="Pre-Registration" />
+
+        <label for="f_id">ID</label>
+        <input id="f_id" type="text" placeholder="pre-reg" />
+        <div class="hint">lowercase letters, numbers, dashes. Example: <code>printed-directory</code></div>
+
+        <label for="f_sort">Sort Order</label>
+        <input id="f_sort" type="number" step="1" placeholder="10" />
+        <div class="hint">Lower shows first (admin + public).</div>
+
+        <div class="row">
+          <div>
+            <label for="f_type">Type</label>
+            <select id="f_type">
+              <option value="fixed">fixed</option>
+              <option value="qty">qty</option>
+              <option value="amount">amount</option>
+              <option value="variantQty">variantQty</option>
+            </select>
+          </div>
+          <div>
+            <label for="f_active">Active</label>
+            <select id="f_active">
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="row_price">
+          <label for="f_price">Price (USD)</label>
+          <input id="f_price" type="number" step="0.01" min="0" placeholder="15.00" />
+          <div class="hint">Used for <code>fixed</code> and <code>qty</code> types. Ignored for <code>amount</code> and <code>variantQty</code>.</div>
+        </div>
+
+        <div id="row_variants" style="display:none">
+          <label for="f_variants">Variants (one per line, format: <code>Label:Price</code>)</label>
+          <textarea id="f_variants" placeholder="Small Ad:25&#10;Half Page:50&#10;Full Page:100"></textarea>
+          <div class="hint">Only for <code>variantQty</code>. Example above will create labeled price options.</div>
+        </div>
+
+        <label for="f_limit">Limit per attendee (optional)</label>
+        <input id="f_limit" type="number" step="1" min="0" placeholder="1" />
+
+        <label for="f_chair_name">Chairperson Name</label>
+        <input id="f_chair_name" type="text" placeholder="Jane Smith" />
+
+        <label for="f_chair_emails">Chair Emails (comma-separated)</label>
+        <input id="f_chair_emails" type="text" placeholder="chair@example.com, cochair@example.com" />
+
+        <label for="f_report_freq">Report Frequency</label>
+        <select id="f_report_freq">
+          <option value="monthly">Monthly (default)</option>
+          <option value="biweekly">Twice per month</option>
+          <option value="weekly">Weekly</option>
+          <option value="daily">Daily</option>
+          <option value="none">Do not auto-send</option>
+        </select>
+        <div class="hint">Used by automated chair reports for this add-on.</div>
+
+        <!-- YoY slot selection -->
+        <label for="f_slot_label">Year-over-year Slot</label>
+        <select id="f_slot_label"></select>
+        <div class="hint">Required: choose a label (e.g. “Session Directory”) to compare this add-on with the same slot in other years.</div>
+
+        <div class="row">
+          <div>
+            <label for="f_start">Publish Start</label>
+            <input id="f_start" type="datetime-local" />
+          </div>
+          <div>
+            <label for="f_end">Publish End</label>
+            <input id="f_end" type="datetime-local" />
+          </div>
+        </div>
+
+        <label for="f_notes">Notes / Description</label>
+        <textarea id="f_notes" placeholder="Optional description shown on the page."></textarea>
+
+        <div class="toolbar" style="margin-top:10px">
+          <button id="btnSave" class="btn">Save</button>
+          <button id="btnReset" class="btn ghost">Reset</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Static fallback hook -->
+  <script>window.AMARANTH_REGISTER_ENDPOINT = "/api/router?action=register_item";</script>
+  <!-- Slot keys helper for YoY grouping -->
+  <script src="/assets/js/admin-slotkeys.js"></script>
+  <script src="/assets/js/grand-court-addons.js"></script>
+
+  <!-- Admin shared helpers -->
+  <script src="/assets/js/admin.js"></script>
+
+  <script>
+  // --- Logout only (auth is now token-based like reporting_main.html) ---
+  (function () {
+    const btn = document.getElementById('logoutBtn');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      try {
+        localStorage.removeItem('amaranth_report_token');
+        localStorage.removeItem('amaranth_admin_ok');
+      } catch (e) {}
+      window.location.href = '/admin/login.html';
+    });
+  })();
+
+  // Use $ / $$ from admin.js (no re-declare here)
+  const idOK = id => /^[a-z0-9-]+$/.test(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const pad = n => String(n).padStart(2,'0');
+  const prettyDate = d => d instanceof Date && !isNaN(d)
+    ? d.toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})
+    : '—';
+
+  function toLocalDT(iso){
+    if(!iso) return '';
+    const d = new Date(iso);
+    if(isNaN(d)) return '';
+    const y=d.getFullYear(), m=pad(d.getMonth()+1), day=pad(d.getDate()), hh=pad(d.getHours()), mm=pad(d.getMinutes());
+    return `${y}-${m}-${day}T${hh}:${mm}`;
+  }
+  function fromLocalDT(local){
+    if(!local) return '';
+    const d = new Date(local);
+    return isNaN(d) ? '' : d.toISOString();
+  }
+
+  // ---- Frequency helpers ----
+  const VALID_FREQS = ["daily","weekly","biweekly","monthly","none"];
+
+  function normalizeFreq(raw){
+    const v = String(raw || "").trim().toLowerCase();
+    if (!v) return "monthly";
+    if (VALID_FREQS.includes(v)) return v;
+    return "monthly";
+  }
+
+  function describeFreq(freq){
+    const f = normalizeFreq(freq);
+    switch (f) {
+      case "daily":    return "Daily";
+      case "weekly":   return "Weekly";
+      case "biweekly": return "Twice per month";
+      case "monthly":  return "Monthly";
+      case "none":     return "—";
+      default:         return "Monthly";
+    }
+  }
+
+  // ---- Slot key helpers (YoY bucket for add-ons) ----
+  const SLOT_KIND = "addon";
+  const SLOT_NONE_VALUE = "";
+  const SLOT_ADD_VALUE = "__add__";
+
+  function makeSlotKeyFromLabel(label) {
+    const base = String(label || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return base || "";
+  }
+
+  function getSlotList() {
+    if (window.SlotKeys && typeof SlotKeys.getSlots === "function") {
+      const arr = SlotKeys.getSlots(SLOT_KIND) || [];
+      return arr
+        .map(s => ({
+          key: s.key || makeSlotKeyFromLabel(s.label || s.name),
+          label: s.label || s.name || "",
+          scope: s.scope || SLOT_KIND
+        }))
+        .filter(s => s.label);
+    }
+    return [];
+  }
+
+  function ensureSlot(kind, label) {
+    const trimmed = String(label || "").trim();
+    if (!trimmed) return { key: "", label: "", scope: kind };
+    if (window.SlotKeys && typeof SlotKeys.ensureSlot === "function") {
+      try {
+        return SlotKeys.ensureSlot(kind, trimmed);
+      } catch (e) {
+        console.warn("SlotKeys.ensureSlot failed:", e);
+      }
+    }
+    return {
+      key: makeSlotKeyFromLabel(trimmed),
+      label: trimmed,
+      scope: kind
+    };
+  }
+
+  function populateSlotSelect(selectedLabel) {
+    const sel = document.getElementById('f_slot_label');
+    if (!sel) return;
+
+    const current = selectedLabel == null ? sel.value : selectedLabel;
+    sel.innerHTML = "";
+
+    const optNone = document.createElement("option");
+    optNone.value = SLOT_NONE_VALUE;
+    optNone.textContent = "— Select a slot —";
+    sel.appendChild(optNone);
+
+    const slots = getSlotList();
+    slots.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.label;
+      opt.textContent = s.label;
+      sel.appendChild(opt);
+    });
+
+    const optAdd = document.createElement("option");
+    optAdd.value = SLOT_ADD_VALUE;
+    optAdd.textContent = "➕ Add new label…";
+    sel.appendChild(optAdd);
+
+    if (current && current !== SLOT_ADD_VALUE) {
+      const exists = slots.some(s => s.label === current);
+      if (!exists && current !== SLOT_NONE_VALUE) {
+        const opt = document.createElement("option");
+        opt.value = current;
+        opt.textContent = current;
+        sel.insertBefore(opt, optAdd);
+      }
+      sel.value = current;
+    } else {
+      sel.value = SLOT_NONE_VALUE;
+    }
+  }
+
+  function onSlotChange(e) {
+    const sel = e.currentTarget;
+    if (!sel) return;
+    const val = sel.value;
+    if (val === SLOT_ADD_VALUE) {
+      const label = window.prompt("Enter a new year-over-year slot label (e.g. 'Session Directory'):");
+      if (!label) {
+        sel.value = SLOT_NONE_VALUE;
+        return;
+      }
+      const slot = ensureSlot(SLOT_KIND, label);
+      populateSlotSelect(slot.label);
+      sel.value = slot.label;
+    }
+  }
+
+  // ---- Normalization helpers for add-ons ----
+  function normalizeAddon(a){
+    const out = { ...(a || {}) };
+
+    if (out.type === "fixed" || out.type === "qty") {
+      out.price = Number(out.price || 0) || 0;
+    } else {
+      if (out.price == null) delete out.price;
+    }
+
+    out.active = (out.active !== false);
+
+    out.publishStart = out.publishStart || "";
+    out.publishEnd   = out.publishEnd   || "";
+
+    if (!Array.isArray(out.chairEmails)) {
+      const e = out.chairEmails || (out.chair && out.chair.email) || "";
+      out.chairEmails = e ? String(e).split(",").map(s => s.trim()).filter(Boolean) : [];
+    }
+
+    out.chair = out.chair || {};
+    if (!out.chair.name) out.chair.name = "";
+    if (!out.chair.email && out.chairEmails.length) out.chair.email = out.chairEmails[0];
+
+    if (out.limitPerAttendee == null && out.limit != null) {
+      out.limitPerAttendee = out.limit;
+    }
+
+    out.reportFrequency = normalizeFreq(out.reportFrequency || out.report_frequency || "monthly");
+
+    if (!out.type) out.type = "fixed";
+
+    out.slotScope = out.slotScope || SLOT_KIND;
+    out.slotKey = out.slotKey || "";
+    out.slotLabel = out.slotLabel || out.slotKey || "";
+
+    // NEW: normalize sortOrder
+    if (out.sortOrder === "" || out.sortOrder == null) {
+      // leave as undefined/null
+    } else {
+      const so = Number(out.sortOrder);
+      out.sortOrder = Number.isFinite(so) ? so : undefined;
+    }
+
+    return out;
+  }
+
+  function normalizeAll(list){
+    return (Array.isArray(list) ? list : []).map(normalizeAddon);
+  }
+
+  // NEW: sync each add-on's chair emails + freq to backend register_item
+  async function syncChairEmailConfigs(list){
+    const endpoint = window.AMARANTH_REGISTER_ENDPOINT || "/api/router?action=register_item";
+
+    const payloads = (list || []).map(a => ({
+      id: a.id || "",
+      name: a.name || "",
+      chairEmails: Array.isArray(a.chairEmails) ? a.chairEmails : (a.chair?.email ? [a.chair.email] : []),
+      publishStart: a.publishStart || "",
+      publishEnd: a.publishEnd || "",
+      reportFrequency: normalizeFreq(a.reportFrequency || a.report_frequency || "monthly")
+    })).filter(x => x.id && x.name);
+
+    if (!payloads.length) return { attempted: 0, ok: 0 };
+
+    const headers = { "Content-Type": "application/json", ...Admin.tokenHeader() };
+
+    const results = await Promise.all(payloads.map(async cfg => {
+      try {
+        const r = await fetch(endpoint, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(cfg)
+        });
+        if (!r.ok) {
+          const txt = await r.text().catch(() => "");
+          console.warn("register_item failed for", cfg.id, r.status, txt);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.warn("register_item error for", cfg.id, err);
+        return false;
+      }
+    }));
+
+    const ok = results.filter(Boolean).length;
+    return { attempted: payloads.length, ok };
+  }
+
+  // We keep ALL add-ons in modelAll (history). The manager view only shows active ones.
+  let modelAll = [];
+  let current = null;
+  let isNew = true;
+
+  function viewList(){
+    return modelAll.filter(a => a.active !== false);
+  }
+
+  // ---- Initial Load (keep empty-array fix; but preserve history) ----
+  async function loadInitial(){
+    let loaded = false;
+    try {
+      const r = await fetch('/api/router?type=addons', { cache: 'no-store' });
+      if (r.ok) {
+        const j = await r.json();
+        if (Array.isArray(j?.addons)) {
+          modelAll = normalizeAll(j.addons);
+          loaded = true;
+        }
+      }
+    } catch (e) {
+      console.warn('Server addons fetch failed:', e);
+    }
+
+    const listMsgEl = document.getElementById('listMsg');
+
+    if (!loaded) {
+      const src = Array.isArray(window.GRAND_COURT_ADDONS) ? window.GRAND_COURT_ADDONS : [];
+      modelAll = normalizeAll(JSON.parse(JSON.stringify(src)));
+      if (listMsgEl) listMsgEl.textContent = 'Using static list (fallback).';
+    } else {
+      if (listMsgEl) listMsgEl.textContent = 'Loaded from server.';
+    }
+
+    populateSlotSelect();
+    renderList();
+    startNew();
+    syncTypeFields();
+  }
+
+  document.getElementById('btnRefresh').addEventListener('click', async ()=>{
+    const listMsgEl = document.getElementById('listMsg');
+    if (listMsgEl) listMsgEl.textContent = 'Refreshing…';
+    let loaded = false;
+    try{
+      const r = await fetch('/api/router?type=addons', { cache: 'no-store' });
+      if (r.ok) {
+        const j = await r.json();
+        if (Array.isArray(j?.addons)){
+          modelAll = normalizeAll(j.addons);
+          loaded = true;
+          if (listMsgEl) listMsgEl.textContent = 'Loaded from server.';
+        }
+      }
+    }catch(err){ console.warn('Refresh server error:', err); }
+    if(!loaded){
+      const src = Array.isArray(window.GRAND_COURT_ADDONS) ? window.GRAND_COURT_ADDONS : [];
+      modelAll = normalizeAll(JSON.parse(JSON.stringify(src)));
+      if (listMsgEl) listMsgEl.textContent = 'Server empty/unavailable — using fallback.';
+    }
+    populateSlotSelect();
+    renderList();
+    startNew();
+    syncTypeFields();
+  });
+
+  // Show/hide price vs variants based on type
+  const typeEl = document.getElementById('f_type');
+  const rowPrice = document.getElementById('row_price');
+  const rowVariants = document.getElementById('row_variants');
+  function syncTypeFields(){
+    const t = typeEl.value;
+    if (t === 'variantQty'){
+      rowPrice.style.display = 'none';
+      rowVariants.style.display = '';
+    } else if (t === 'amount'){
+      rowPrice.style.display = 'none';
+      rowVariants.style.display = 'none';
+    } else {
+      rowPrice.style.display = '';
+      rowVariants.style.display = 'none';
+    }
+  }
+  typeEl.addEventListener('change', syncTypeFields);
+
+  // ---------- List Rendering (active only) ----------
+  function renderList(){
+    const tb = document.getElementById('tbody');
+    tb.innerHTML = '';
+
+    const model = viewList();
+
+    // NEW: banquets-style sorting (sortOrder, then name)
+    const list = [...model].sort((a,b) => {
+      const ao = Number(a.sortOrder ?? 1000);
+      const bo = Number(b.sortOrder ?? 1000);
+      if (ao !== bo) return ao - bo;
+      return String(a.name||'').localeCompare(String(b.name||''));
+    });
+
+    if(!list.length){
+      tb.innerHTML = '<tr><td colspan="10" class="muted">No active add-ons — click “New” to create one.</td></tr>';
+      return;
+    }
+
+    for(const a of list){
+      const start = a.publishStart ? new Date(a.publishStart).toLocaleString() : '—';
+      const end   = a.publishEnd ? new Date(a.publishEnd).toLocaleString() : '—';
+      const chair = (a.chair && a.chair.name) ? a.chair.name : (a.chair?.email || '—');
+      const freqLabel = describeFreq(a.reportFrequency || a.report_frequency || "monthly");
+      const slotLabel = a.slotLabel || "";
+      const sortLabel = (a.sortOrder == null || a.sortOrder === "") ? '<span class="muted">—</span>' : esc(a.sortOrder);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${sortLabel}</td>
+        <td><strong>${esc(a.name||'')}</strong></td>
+        <td><code>${esc(a.id||'')}</code></td>
+        <td>${slotLabel ? esc(slotLabel) : '<span class="muted">—</span>'}</td>
+        <td>${esc(a.type||'fixed')}</td>
+        <td>${a.active===false?'<span class="danger">false</span>':'<span class="ok">true</span>'}</td>
+        <td><span class="muted">${esc(freqLabel)}</span></td>
+        <td><div class="muted">${start} → ${end}</div></td>
+        <td>${esc(chair)}</td>
+        <td class="actions">
+          <button class="btn ghost btnEdit" data-id="${esc(a.id)}">Edit</button>
+          <button class="btn ghost btnCopy" data-id="${esc(a.id)}">Duplicate</button>
+          <button class="btn warn btnArchive" data-id="${esc(a.id)}">Archive</button>
+        </td>`;
+      tb.appendChild(tr);
+    }
+
+    tb.querySelectorAll('.btnEdit').forEach(el=>el.addEventListener('click',onEdit));
+    tb.querySelectorAll('.btnCopy').forEach(el=>el.addEventListener('click',onCopy));
+    tb.querySelectorAll('.btnArchive').forEach(el=>el.addEventListener('click',onArchive));
+  }
+
+  // ---------- Form helpers ----------
+  function startNew(){
+    isNew = true;
+    current = null;
+    document.getElementById('modeChip').textContent = 'New';
+    document.getElementById('editMsg').textContent = '';
+
+    document.getElementById('f_name').value = '';
+    document.getElementById('f_id').value = '';
+    document.getElementById('f_sort').value = '';
+    document.getElementById('f_type').value = 'fixed';
+    document.getElementById('f_active').value = 'true';
+    document.getElementById('f_price').value = '';
+    document.getElementById('f_variants').value = '';
+    document.getElementById('f_limit').value = '';
+    document.getElementById('f_chair_name').value = '';
+    document.getElementById('f_chair_emails').value = '';
+    document.getElementById('f_report_freq').value = 'monthly';
+    document.getElementById('f_start').value = '';
+    document.getElementById('f_end').value = '';
+    document.getElementById('f_notes').value = '';
+    populateSlotSelect();
+    syncTypeFields();
+  }
+
+  function fillForm(a){
+    const n = normalizeAddon(a);
+    isNew = false;
+    current = n;
+    document.getElementById('modeChip').textContent = 'Edit';
+    document.getElementById('editMsg').textContent = '';
+
+    populateSlotSelect(n.slotLabel || "");
+
+    document.getElementById('f_name').value = n.name || '';
+    document.getElementById('f_id').value = n.id || '';
+    document.getElementById('f_sort').value = (n.sortOrder ?? '');
+    document.getElementById('f_type').value = n.type || 'fixed';
+    document.getElementById('f_active').value = String(n.active !== false);
+
+    const price = Number(n.price || 0);
+    document.getElementById('f_price').value = price > 0 ? price.toFixed(2) : '';
+
+    if (Array.isArray(n.variants) && n.variants.length){
+      document.getElementById('f_variants').value = n.variants.map(v => `${v.label || v.name || ''}:${Number(v.price||0)}`).join('\n');
+    } else {
+      document.getElementById('f_variants').value = '';
+    }
+
+    document.getElementById('f_limit').value = (n.limitPerAttendee || n.limit || '') || '';
+
+    document.getElementById('f_chair_name').value = (n.chair && n.chair.name) ? n.chair.name : '';
+    document.getElementById('f_chair_emails').value = Array.isArray(n.chairEmails) ? n.chairEmails.join(', ') : (n.chair?.email || '');
+
+    document.getElementById('f_report_freq').value = normalizeFreq(n.reportFrequency || n.report_frequency || "monthly");
+    document.getElementById('f_start').value = toLocalDT(n.publishStart || '');
+    document.getElementById('f_end').value = toLocalDT(n.publishEnd || '');
+    document.getElementById('f_notes').value = n.description || n.notes || '';
+
+    syncTypeFields();
+  }
+
+  function parseVariants(text){
+    const out = [];
+    String(text||'').split(/\r?\n/).forEach(line=>{
+      const s = line.trim();
+      if (!s) return;
+      const m = s.split(':');
+      const label = (m[0]||'').trim();
+      const price = Number((m[1]||'').trim());
+      if (!label) return;
+      if (!isFinite(price) || price < 0) return;
+      out.push({ id: label.toLowerCase().replace(/[^a-z0-9-]+/g,'-'), label, price });
+    });
+    return out;
+  }
+
+  function readForm(){
+    const name = document.getElementById('f_name').value.trim();
+    const id   = document.getElementById('f_id').value.trim();
+    const sortOrderRaw = document.getElementById('f_sort').value;
+    const type = document.getElementById('f_type').value;
+    const active = document.getElementById('f_active').value === 'true';
+
+    const price = parseFloat(document.getElementById('f_price').value || '0') || 0;
+    const variants = parseVariants(document.getElementById('f_variants').value);
+    const limitPerAttendee = parseInt(document.getElementById('f_limit').value || '0', 10) || 0;
+
+    const chairName = document.getElementById('f_chair_name').value.trim();
+    const chairEmailsRaw = document.getElementById('f_chair_emails').value.trim();
+    const startISO = fromLocalDT(document.getElementById('f_start').value);
+    const endISO = fromLocalDT(document.getElementById('f_end').value);
+    const notes = document.getElementById('f_notes').value.trim();
+    const freq = normalizeFreq(document.getElementById('f_report_freq').value || 'monthly');
+
+    const chairEmails = chairEmailsRaw
+      ? chairEmailsRaw.split(',').map(s=>s.trim()).filter(Boolean)
+      : [];
+
+    const slotLabelRaw = document.getElementById('f_slot_label').value || "";
+    let slotKey = "";
+    let slotLabel = "";
+    let slotScope = SLOT_KIND;
+
+    if (slotLabelRaw && slotLabelRaw !== SLOT_ADD_VALUE && slotLabelRaw !== SLOT_NONE_VALUE) {
+      const slot = ensureSlot(SLOT_KIND, slotLabelRaw);
+      slotKey = slot.key || "";
+      slotLabel = slot.label || "";
+      slotScope = slot.scope || SLOT_KIND;
+    }
+
+    const sortOrder = (String(sortOrderRaw || "").trim() === "")
+      ? null
+      : Number(sortOrderRaw);
+
+    const base = {
+      id, name, type, active,
+      sortOrder: (sortOrder == null || !Number.isFinite(sortOrder)) ? null : sortOrder,
+      publishStart: startISO,
+      publishEnd: endISO,
+      description: notes,
+      chair: { name: chairName, email: chairEmails[0] || '' },
+      chairEmails,
+      reportFrequency: freq,
+      slotKey,
+      slotLabel,
+      slotScope
+    };
+
+    if (limitPerAttendee > 0) base.limitPerAttendee = limitPerAttendee;
+
+    if (type === 'variantQty'){
+      base.variants = variants;
+      delete base.price;
+    } else if (type === 'amount'){
+      delete base.price;
+      delete base.variants;
+    } else {
+      base.price = Math.round(price * 100) / 100;
+      delete base.variants;
+    }
+
+    return base;
+  }
+
+  function validate(o){
+    if (!o.name) return 'Name is required.';
+    if (!o.id) return 'ID is required.';
+    if (!idOK(o.id)) return 'ID must be lowercase letters, numbers, and dashes only.';
+    if (o.sortOrder != null && !Number.isFinite(Number(o.sortOrder))) return 'Sort Order must be a number.';
+    if (o.type === 'fixed' || o.type === 'qty'){
+      const p = Number(o.price || 0);
+      if (!isFinite(p) || p < 0) return 'Price cannot be negative.';
+    }
+    if (o.type === 'variantQty'){
+      if (!Array.isArray(o.variants) || o.variants.length === 0) return 'Add at least one variant.';
+    }
+    if (!o.slotLabel || !o.slotKey) return 'Year-over-year slot is required.';
+    if (o.publishStart && o.publishEnd && new Date(o.publishStart) > new Date(o.publishEnd))
+      return 'Publish End must be after Publish Start.';
+    for (const em of (o.chairEmails || [])){
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return `Invalid chair email: ${em}`;
+    }
+    return '';
+  }
+
+  function onEdit(e){
+    const id = e.currentTarget.dataset.id;
+    const a = modelAll.find(x => x.id === id);
+    if (!a) { document.getElementById('editMsg').textContent = 'Item not found.'; return; }
+    fillForm(a);
+  }
+
+  function uniqueId(base){
+    let i = 1, candidate = base;
+    while (modelAll.some(x => x.id === candidate)) {
+      i += 1;
+      candidate = `${base}-${i}`;
+    }
+    return candidate;
+  }
+
+  function onCopy(e){
+    const id = e.currentTarget.dataset.id;
+    const a = modelAll.find(x => x.id === id);
+    if (!a) { document.getElementById('editMsg').textContent = 'Item not found.'; return; }
+    const copy = normalizeAddon(JSON.parse(JSON.stringify(a)));
+    copy.name = (copy.name || '') + ' (copy)';
+    const baseId = (copy.id || 'addon') + '-copy';
+    copy.id = uniqueId(baseId);
+    copy.publishStart = '';
+    copy.publishEnd = '';
+    startNew();
+    fillForm(copy);
+    isNew = true;
+    document.getElementById('modeChip').textContent = 'New (from copy)';
+  }
+
+  async function persistAll(){
+    const headers = { "Content-Type": "application/json", ...Admin.tokenHeader() };
+    const payload = normalizeAll(modelAll);
+
+    const res = await fetch("/api/router?action=save_addons", {
+      method: "POST", headers, body: JSON.stringify({ addons: payload })
+    });
+    if (!res.ok) throw new Error("server rejected");
+
+    try { await syncChairEmailConfigs(payload); } catch (_) {}
+  }
+
+  // Delete -> Archive
+  async function onArchive(e){
+    const id = e.currentTarget.dataset.id;
+    const idx = modelAll.findIndex(x => x.id === id);
+    if (idx < 0) { document.getElementById('editMsg').textContent = 'Item not found.'; return; }
+
+    const a = modelAll[idx];
+    const ok = confirm(
+      `Archive "${a.name}" (${id})?\n\n` +
+      `It will be hidden from the Add-Ons Manager but kept for YoY/history.`
+    );
+    if (!ok) return;
+
+    const nowISO = new Date().toISOString();
+    const endMs = a.publishEnd ? Date.parse(a.publishEnd) : NaN;
+
+    modelAll[idx] = normalizeAddon({
+      ...a,
+      active: false,
+      // close window if blank or in the future
+      publishEnd: (!a.publishEnd || isNaN(endMs) || endMs > Date.now()) ? nowISO : a.publishEnd
+    });
+
+    if (current && current.id === id) startNew();
+
+    renderList();
+    document.getElementById('editMsg').textContent = 'Archiving…';
+
+    try{
+      await persistAll();
+      document.getElementById('editMsg').textContent = 'Archived (history preserved for YoY).';
+    }catch(err){
+      console.warn("Archive persist error:", err);
+      document.getElementById('editMsg').textContent = 'Archived locally; export JSON if needed.';
+    }
+  }
+
+  // Buttons wired
+  document.getElementById('btnAddNew').addEventListener('click', startNew);
+  document.getElementById('btnReset').addEventListener('click', ()=>{ if(isNew) startNew(); else fillForm(current); });
+
+  // Export / Import (full history)
+  document.getElementById('btnExport').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(normalizeAll(modelAll), null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'addons-export.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('fileImport').addEventListener('change', async (ev)=>{
+    const f = ev.target.files[0];
+    if (!f) return;
+    try{
+      const txt = await f.text();
+      const data = JSON.parse(txt);
+      if (!Array.isArray(data)) throw new Error('JSON must be an array');
+      modelAll = normalizeAll(data);
+      populateSlotSelect();
+      renderList();
+      startNew();
+      const listMsgEl = document.getElementById('listMsg');
+      if (listMsgEl) listMsgEl.textContent = 'Imported from file (not yet saved to server).';
+    }catch(err){
+      alert('Import failed: ' + (err?.message || String(err)));
+    }finally{
+      ev.target.value = '';
+    }
+  });
+
+  // Save (full history)
+  document.getElementById('btnSave').addEventListener('click', async ()=>{
+    const o = readForm();
+    const err = validate(o);
+    if(err){ document.getElementById('editMsg').textContent = err; return; }
+
+    const idx = modelAll.findIndex(x => x.id === o.id);
+    if(idx >= 0){
+      modelAll[idx] = {...modelAll[idx], ...o};
+    }else{
+      modelAll.push(o);
+      isNew = false;
+      current = o;
+      document.getElementById('modeChip').textContent = 'Edit';
+    }
+
+    renderList();
+
+    try{
+      document.getElementById('editMsg').textContent = 'Saving…';
+      await persistAll();
+      document.getElementById('editMsg').textContent = 'Saved to server.';
+    }catch{
+      document.getElementById('editMsg').textContent = 'Saved locally; export JSON if needed.';
+    }
+  });
+
+  // Wire slot change
+  const slotSel = document.getElementById('f_slot_label');
+  if (slotSel) slotSel.addEventListener('change', onSlotChange);
+
+  loadInitial();
+  </script>
+</body>
+</html>

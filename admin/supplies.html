@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Supplies Admin — Amaranth</title>
+
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f7f7fb;color:#111;margin:0}
+    .container{max-width:none;width:min(1700px, calc(100vw - 48px));margin:24px auto;padding:0 24px;box-sizing:border-box}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:14px}
+    h1{margin:0 0 10px}
+    .muted{opacity:.75}
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .row.spread{justify-content:space-between}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:800}
+    .btn{border:1px solid #d1d5db;background:#fff;border-radius:10px;padding:10px 12px;font-weight:900;cursor:pointer}
+    .btn-primary{border-color:#111;background:#111;color:#fff}
+    .btn-danger{border-color:#ef4444;background:#ef4444;color:#fff}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    input[type="text"]{padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;width:min(520px, 100%)}
+    .hint{font-size:.9rem;opacity:.75}
+
+    .stickybar{
+      position:sticky;top:0;z-index:5;
+      background:rgba(247,247,251,0.92);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border-bottom:1px solid rgba(229,231,235,0.9);
+      padding:10px 0;
+      margin:-24px 0 14px;
+    }
+    .stickybar .container{margin:0 auto}
+
+    .status{font-weight:900}
+    .ok{color:#047857}
+    .bad{color:#b91c1c}
+
+    .cats{display:grid;grid-template-columns:1fr;gap:14px}
+    @media (min-width: 980px){ .cats{grid-template-columns:1fr 1fr;} }
+
+    .cat{border:1px solid rgba(229,231,235,0.95);border-radius:14px;overflow:hidden;background:#fff}
+    .cat-h{
+      padding:10px 12px;font-weight:950;background:#f9fafb;border-bottom:1px solid rgba(229,231,235,0.95);
+      display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap
+    }
+    .cat-title{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .cat-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px 8px;border-bottom:1px solid rgba(229,231,235,0.75);vertical-align:top}
+    th{font-size:.82rem;text-transform:uppercase;letter-spacing:.03em;opacity:.8;text-align:left}
+    tr:last-child td{border-bottom:0}
+
+    .name{font-weight:950}
+    .meta{font-size:.9rem;opacity:.75;margin-top:2px}
+    .price{font-weight:950;white-space:nowrap}
+
+    .toggle{display:inline-flex;align-items:center;gap:10px;white-space:nowrap}
+    .toggle input{transform:scale(1.15)}
+    .tiny{font-size:.85rem;opacity:.8}
+    .pill2{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid rgba(229,231,235,0.95);background:#fff;font-size:.85rem;font-weight:850}
+  </style>
+</head>
+
+<body>
+  <div class="stickybar">
+    <div class="container">
+      <div class="row spread">
+        <div class="row">
+          <span class="pill">Admin • Supplies</span>
+          <span id="status" class="status muted">Loading…</span>
+          <span id="counts" class="pill2" style="display:none;"></span>
+        </div>
+        <div class="row">
+          <button class="btn" id="allOn">Set All Active</button>
+          <button class="btn" id="allOff">Set All Inactive</button>
+          <button class="btn btn-primary" id="saveBtn">Save Changes</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <input id="q" type="text" placeholder="Search name/category… (try: inactive)" />
+        <span class="hint">Changes are local until you click <b>Save Changes</b>.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h1>Supplies Items</h1>
+      <div class="muted">
+        Toggle <b>Active</b> per item. Public supplies page will only show items with <b>active=true</b> (and within publish window if you use those fields).
+      </div>
+      <div class="hint" style="margin-top:8px">
+        If you want the entire supplies page “off”, easiest method is: <b>Set All Inactive</b> → <b>Save</b>.
+      </div>
+    </div>
+
+    <div id="cats" class="cats" style="margin-top:14px"></div>
+  </div>
+
+  <!-- Optional admin helpers (token header, etc.) -->
+  <script src="/assets/js/admin.js"></script>
+
+  <script>
+    const CAT = "supplies";
+
+    function escHtml(s){
+      return String(s ?? "").replace(/[&<>"]/g, c => (
+        c === "&" ? "&amp;" :
+        c === "<" ? "&lt;" :
+        c === ">" ? "&gt;" : "&quot;"
+      ));
+    }
+
+    function normalizePrice(p){
+      const n = Number(p);
+      if (!isFinite(n)) return 0;
+      return (n > 0 && n < 1) ? Math.round(n * 100) : n;
+    }
+
+    function money(n){
+      const v = Math.max(0, Math.round(Number(n) * 100) / 100);
+      return v.toLocaleString("en-US", { style:"currency", currency:"USD", minimumFractionDigits:2 });
+    }
+
+    function keyCat(it){
+      return String(it?.category || "Other").trim() || "Other";
+    }
+
+    // Keep your desired PDF-ish order in admin too (first appearance wins)
+    function groupByCategoryPreserveOrder(items){
+      const map = new Map();
+      items.forEach(it=>{
+        const cat = keyCat(it);
+        if (!map.has(cat)) map.set(cat, []);
+        map.get(cat).push(it);
+      });
+      return map;
+    }
+
+    function getTokenHeaders(){
+      try{
+        if (window.Admin && typeof Admin.tokenHeader === "function") {
+          return Admin.tokenHeader() || {};
+        }
+      }catch(e){}
+      return {};
+    }
+
+    async function apiGetItems(){
+      // KV first
+      try{
+        const r = await fetch(`/api/router?type=catalog_items&cat=${encodeURIComponent(CAT)}`, { cache:"no-store" });
+        if (r.ok){
+          const data = await r.json();
+          if (Array.isArray(data?.items)) return data.items;
+        }
+      }catch(e){}
+      // fallback to static if present
+      if (CAT === "supplies" && Array.isArray(window.SUPPLIES_ITEMS)) return window.SUPPLIES_ITEMS;
+      return [];
+    }
+
+    async function apiSaveItems(items){
+      const headers = {
+        "Content-Type": "application/json",
+        ...getTokenHeaders(),
+      };
+
+      // Try the most likely action names (your router setups have varied)
+      const payload = { cat: CAT, items };
+
+      // 1) save_catalog_items
+      {
+        const r = await fetch(`/api/router?action=save_catalog_items`, {
+          method:"POST",
+          headers,
+          body: JSON.stringify(payload),
+        });
+        if (r.ok) return await r.json().catch(()=>({ok:true}));
+      }
+
+      // 2) catalog_items_save
+      {
+        const r = await fetch(`/api/router?action=catalog_items_save`, {
+          method:"POST",
+          headers,
+          body: JSON.stringify(payload),
+        });
+        if (r.ok) return await r.json().catch(()=>({ok:true}));
+      }
+
+      // 3) fallback: POST with type=...
+      {
+        const r = await fetch(`/api/router?type=catalog_items_save&cat=${encodeURIComponent(CAT)}`, {
+          method:"POST",
+          headers,
+          body: JSON.stringify(payload),
+        });
+        if (r.ok) return await r.json().catch(()=>({ok:true}));
+      }
+
+      throw new Error("save-failed");
+    }
+
+    // ---------- UI state ----------
+    let model = [];
+    let originalJson = "";
+
+    const statusEl = document.getElementById("status");
+    const countsEl = document.getElementById("counts");
+    const catsEl = document.getElementById("cats");
+    const qEl = document.getElementById("q");
+    const saveBtn = document.getElementById("saveBtn");
+
+    function setStatus(text, cls){
+      statusEl.className = "status " + (cls || "muted");
+      statusEl.textContent = text;
+    }
+
+    function updateCounts(){
+      const total = model.length;
+      const active = model.filter(x => x && x.active === true).length;
+      const inactive = total - active;
+      countsEl.style.display = "";
+      countsEl.textContent = `${total} total • ${active} active • ${inactive} inactive`;
+    }
+
+    function isDirty(){
+      try{
+        return JSON.stringify(model) !== originalJson;
+      }catch(e){
+        return true;
+      }
+    }
+
+    function updateSaveButton(){
+      saveBtn.disabled = !isDirty();
+    }
+
+    function getFilteredModel(){
+      const q = String(qEl.value || "").trim().toLowerCase();
+      if (!q) return model.slice();
+
+      if (q === "inactive") return model.filter(x => x && x.active !== true);
+      if (q === "active") return model.filter(x => x && x.active === true);
+
+      return model.filter(it => {
+        const name = String(it?.name || "").toLowerCase();
+        const cat  = String(it?.category || "").toLowerCase();
+        const id   = String(it?.id || "").toLowerCase();
+        return name.includes(q) || cat.includes(q) || id.includes(q);
+      });
+    }
+
+    function render(){
+      updateCounts();
+
+      const view = getFilteredModel();
+      const grouped = groupByCategoryPreserveOrder(view);
+
+      const html = [];
+      for (const [cat, items] of grouped.entries()){
+        const activeCount = items.filter(x => x.active === true).length;
+        html.push(`
+          <div class="cat" data-cat="${escHtml(cat)}">
+            <div class="cat-h">
+              <div class="cat-title">
+                <span>${escHtml(cat)}</span>
+                <span class="pill2">${activeCount}/${items.length} active</span>
+              </div>
+              <div class="cat-actions">
+                <button class="btn" data-cat-on="${escHtml(cat)}">All On</button>
+                <button class="btn" data-cat-off="${escHtml(cat)}">All Off</button>
+              </div>
+            </div>
+            <div class="cat-b">
+              <table class="tbl">
+                <thead>
+                  <tr>
+                    <th style="width:60%">Item</th>
+                    <th style="width:16%">Price</th>
+                    <th style="width:14%">Active</th>
+                    <th style="width:10%">ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${items.map(it => {
+                    const price = normalizePrice(it.price || 0);
+                    const priceText = (it.active !== true && (it.priceText || it.description)) ? "Upon request" : money(price);
+                    return `
+                      <tr data-id="${escHtml(it.id)}">
+                        <td>
+                          <div class="name">${escHtml(it.name || "")}</div>
+                          <div class="meta">${escHtml(it.description || it.notes || "")}</div>
+                        </td>
+                        <td class="price">${escHtml(priceText)}</td>
+                        <td class="right">
+                          <label class="toggle">
+                            <input type="checkbox" class="chk" ${it.active === true ? "checked" : ""} />
+                            <span class="tiny">${it.active === true ? "true" : "false"}</span>
+                          </label>
+                        </td>
+                        <td class="tiny">${escHtml(it.id || "")}</td>
+                      </tr>
+                    `;
+                  }).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `);
+      }
+
+      catsEl.innerHTML = html.join("");
+
+      // row toggle wiring
+      catsEl.querySelectorAll("tr[data-id]").forEach(tr => {
+        const id = tr.getAttribute("data-id");
+        const chk = tr.querySelector(".chk");
+        const tiny = tr.querySelector(".tiny");
+        if (!chk) return;
+
+        chk.addEventListener("change", () => {
+          const it = model.find(x => String(x.id) === String(id));
+          if (!it) return;
+          it.active = chk.checked;
+          if (tiny) tiny.textContent = chk.checked ? "true" : "false";
+          updateSaveButton();
+          renderHeaderOnly(); // update counts without full rerender? we’ll keep it lightweight
+        });
+      });
+
+      // category all on/off
+      catsEl.querySelectorAll("[data-cat-on]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const cat = btn.getAttribute("data-cat-on");
+          model.forEach(it => { if (keyCat(it) === cat) it.active = true; });
+          updateSaveButton();
+          render();
+        });
+      });
+      catsEl.querySelectorAll("[data-cat-off]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const cat = btn.getAttribute("data-cat-off");
+          model.forEach(it => { if (keyCat(it) === cat) it.active = false; });
+          updateSaveButton();
+          render();
+        });
+      });
+
+      updateSaveButton();
+    }
+
+    // quick update for top counts + save state
+    function renderHeaderOnly(){
+      updateCounts();
+      updateSaveButton();
+    }
+
+    document.getElementById("allOn").addEventListener("click", () => {
+      model.forEach(it => it.active = true);
+      updateSaveButton();
+      render();
+    });
+
+    document.getElementById("allOff").addEventListener("click", () => {
+      model.forEach(it => it.active = false);
+      updateSaveButton();
+      render();
+    });
+
+    qEl.addEventListener("input", () => render());
+
+    saveBtn.addEventListener("click", async () => {
+      saveBtn.disabled = true;
+      setStatus("Saving…", "muted");
+      try{
+        await apiSaveItems(model);
+        originalJson = JSON.stringify(model);
+        setStatus("Saved ✓", "ok");
+      }catch(e){
+        console.error(e);
+        setStatus("Save failed (check admin token / router action)", "bad");
+      }finally{
+        updateSaveButton();
+      }
+    });
+
+    // boot
+    (async function init(){
+      setStatus("Loading…", "muted");
+      model = await apiGetItems();
+      if (!Array.isArray(model)) model = [];
+      originalJson = JSON.stringify(model);
+
+      setStatus("Ready", "ok");
+      render();
+    })();
+  </script>
+
+  <!-- If you still use static supplies items anywhere -->
+  <script src="/assets/js/supplies.js?v=nov-06-2025"></script>
+</body>
+</html>

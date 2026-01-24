@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Settings — Amaranth</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f7f7fb;color:#111;margin:0}
+    .container{max-width:900px;margin:24px auto;padding:0 16px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:16px;margin-bottom:16px}
+    h1{margin:0 0 10px}
+    .muted{color:#6b7280}
+    label{display:block;margin:.75rem 0 .25rem;font-weight:600}
+    input[type="text"],input[type="email"],input[type="password"],textarea{
+      width:100%;height:40px;border:1px solid #d1d5db;border-radius:10px;padding:0 12px;background:#fff
+    }
+    textarea{height:72px;padding:10px 12px;line-height:1.35}
+    select{width:100%;height:40px;border:1px solid #d1d5db;border-radius:10px;padding:0 10px;background:#fff}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .row > div{flex:1 1 280px}
+    .btn{height:40px;border:1px solid #d1d5db;background:#111;color:#fff;border-radius:10px;padding:0 14px;font-weight:700}
+    .btn.ghost{background:#fff;color:#111}
+    .pill{display:inline-flex;align-items:center;gap:6px;background:#eef2ff;color:#3730a3;font-weight:600;font-size:12px;border-radius:999px;padding:6px 10px}
+    .ok{color:#065f46}
+    .err{color:#b91c1c}
+    .mode-radio-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
+    .mode-radio-row label{display:flex;align-items:center;gap:6px;margin:0;font-weight:500}
+    .mode-hint{font-size:13px;color:#6b7280;margin-top:4px}
+
+    /* Feature flags */
+    .flag-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #eef2f7}
+    .flag-row:first-child{border-top:none;padding-top:0}
+    .flag-left{flex:1 1 auto}
+    .flag-title{display:flex;align-items:center;gap:10px;font-weight:800}
+    .flag-desc{font-size:13px;color:#6b7280;margin-top:4px;line-height:1.35}
+    .flag-right{flex:0 0 auto;display:flex;align-items:center;gap:8px}
+    .mini-btn{height:32px;padding:0 10px;font-size:13px;border-radius:10px;border:1px solid #d1d5db;background:#fff;color:#111;font-weight:700}
+    .mini-btn.primary{background:#111;color:#fff;border-color:#111}
+    .switch{
+      display:inline-flex;align-items:center;gap:8px;
+      user-select:none;
+      font-weight:600;
+    }
+    .switch input{width:18px;height:18px}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;background:#f3f4f6;border:1px solid #e5e7eb;padding:2px 6px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="row" style="align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h1 style="margin:0">Admin Settings</h1>
+      <div class="row" style="align-items:center;gap:8px">
+        <span id="adminPill" class="pill">Admin Mode</span>
+        <a class="btn ghost" href="/admin/index.html" style="height:32px;padding:0 10px;font-size:13px">← Admin Hub</a>
+        <button id="logoutBtn" class="btn ghost" style="height:32px;padding:0 10px;font-size:13px">Log Out</button>
+      </div>
+    </header>
+
+    <!-- Auth card -->
+    <section class="card">
+      <h3 style="margin:0 0 8px">Authorization</h3>
+      <p class="muted" style="margin:0 0 8px">
+        Settings changes require a token. Enter it once and it will be remembered in this browser.
+      </p>
+      <div class="row">
+        <div>
+          <label for="token">REPORT_TOKEN</label>
+          <input id="token" type="password" placeholder="paste token here" />
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:8px">
+          <button id="saveToken" class="btn">Use This Token</button>
+          <button id="clearToken" class="btn ghost">Clear</button>
+        </div>
+      </div>
+      <div id="tokenMsg" class="muted" style="margin-top:6px"></div>
+    </section>
+
+    <!-- Email settings -->
+    <section class="card">
+      <h3 style="margin:0 0 8px">Email Settings</h3>
+      <div class="row">
+        <div>
+          <label for="fromEmail">RESEND_FROM (verified sender)</label>
+          <input id="fromEmail" type="email" placeholder="reports@yourdomain.com" />
+        </div>
+        <div>
+          <label for="ccList">REPORTS_CC (comma-separated)</label>
+          <input id="ccList" type="text" placeholder="kfors@verizon.net, another@example.com" />
+        </div>
+      </div>
+      <div id="emailMsg" class="muted" style="margin-top:6px"></div>
+    </section>
+
+    <!-- Checkout / Stripe mode -->
+    <section class="card">
+      <h3 style="margin:0 0 8px">Checkout / Stripe Mode</h3>
+      <p class="muted" style="margin:0 0 8px">
+        Choose which channel new orders are stamped with. LIVE mode can be limited to a date window and will
+        automatically fall back to TEST when outside that window.
+      </p>
+
+      <div class="mode-radio-row">
+        <label>
+          <input type="radio" name="checkoutMode" value="test" />
+          <span>Test</span>
+          <span class="mode-hint">Stripe test keys · no real charges</span>
+        </label>
+      </div>
+      <div class="mode-radio-row">
+        <label>
+          <input type="radio" name="checkoutMode" value="live_test" />
+          <span>Live-Test</span>
+          <span class="mode-hint">Real Stripe account · for live testing</span>
+        </label>
+      </div>
+      <div class="mode-radio-row">
+        <label>
+          <input type="radio" name="checkoutMode" value="live" />
+          <span>Live</span>
+          <span class="mode-hint">Real production charges · uses window below</span>
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label for="liveStartDate">Live Start (UTC)</label>
+          <input id="liveStartDate" type="date" />
+        </div>
+        <div>
+          <label for="liveStartTime">Start Time (UTC)</label>
+          <input id="liveStartTime" type="time" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label for="liveEndDate">Live End (UTC)</label>
+          <input id="liveEndDate" type="date" />
+        </div>
+        <div>
+          <label for="liveEndTime">End Time (UTC)</label>
+          <input id="liveEndTime" type="time" />
+        </div>
+      </div>
+
+      <div id="modeInfo" class="muted" style="margin-top:6px">
+        Loading checkout mode…
+      </div>
+    </section>
+
+    <!-- NEW: Staging / Feature Flags -->
+    <section class="card">
+      <h3 style="margin:0 0 6px">Staging / Feature Flags</h3>
+      <p class="muted" style="margin:0 0 10px">
+        Use these switches to safely build pages on the live domain without the public seeing them.
+        Recommended pattern: keep LIVE off, enable PREVIEW for admin testing, then flip LIVE when ready.
+      </p>
+
+      <div id="flagsMsg" class="muted" style="margin-bottom:10px">Loading flags…</div>
+
+      <!-- Supplies -->
+      <div class="flag-row">
+        <div class="flag-left">
+          <div class="flag-title">
+            Supplies Page (LIVE)
+            <span class="kbd">flags:supplies_live</span>
+          </div>
+          <div class="flag-desc">
+            Controls public visibility (nav + page gate). Keep this <b>off</b> until supplies ordering is ready.
+          </div>
+        </div>
+        <div class="flag-right">
+          <label class="switch">
+            <input id="flag_supplies_live" type="checkbox" />
+            <span>Enabled</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flag-row">
+        <div class="flag-left">
+          <div class="flag-title">
+            Supplies Page (PREVIEW)
+            <span class="kbd">flags:supplies_preview</span>
+          </div>
+          <div class="flag-desc">
+            Allows admin-only preview at <span class="kbd">/supplies.html?preview=1</span>.
+            If this is off, the preview URL should be blocked too.
+          </div>
+        </div>
+        <div class="flag-right">
+          <a id="suppliesPreviewBtn" class="mini-btn primary" href="/supplies.html?preview=1" target="_blank" style="display:none">Open Preview</a>
+          <label class="switch">
+            <input id="flag_supplies_preview" type="checkbox" />
+            <span>Enabled</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Placeholders you can use later -->
+      <div class="flag-row">
+        <div class="flag-left">
+          <div class="flag-title">
+            Banquets V2 (PREVIEW)
+            <span class="kbd">flags:banquets_v2_preview</span>
+          </div>
+          <div class="flag-desc">
+            Placeholder for a redesigned banquets page. No public effect until you wire a page to it.
+          </div>
+        </div>
+        <div class="flag-right">
+          <label class="switch">
+            <input id="flag_banquets_v2_preview" type="checkbox" />
+            <span>Enabled</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flag-row">
+        <div class="flag-left">
+          <div class="flag-title">
+            Catalog V2 (PREVIEW)
+            <span class="kbd">flags:catalog_v2_preview</span>
+          </div>
+          <div class="flag-desc">
+            Placeholder for future catalog layout changes.
+          </div>
+        </div>
+        <div class="flag-right">
+          <label class="switch">
+            <input id="flag_catalog_v2_preview" type="checkbox" />
+            <span>Enabled</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Maintenance -->
+    <section class="card">
+      <h3 style="margin:0 0 8px">Maintenance Mode</h3>
+      <div class="row">
+        <div style="flex:1 1 160px">
+          <label for="maintOn">Enabled?</label>
+          <select id="maintOn">
+            <option value="false">Off</option>
+            <option value="true">On</option>
+          </select>
+        </div>
+        <div style="flex:2 1 420px">
+          <label for="maintMsg">Banner Message</label>
+          <textarea id="maintMsg" placeholder="We’re doing scheduled maintenance. Please check back soon."></textarea>
+        </div>
+      </div>
+      <div id="maintInfo" class="muted" style="margin-top:6px"></div>
+    </section>
+
+    <!-- Actions -->
+    <section class="card">
+      <div class="row" style="align-items:center;gap:8px">
+        <button id="saveAll" class="btn">Save Settings</button>
+        <button id="reload" class="btn ghost">Reload</button>
+        <span id="saveMsg" class="muted"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 8px">Current Values (read-only)</h3>
+      <pre id="currentJson" style="white-space:pre-wrap;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin:0;max-height:320px;overflow:auto">Loading…</pre>
+    </section>
+  </main>
+
+  <!-- Shared admin helpers -->
+  <script src="/assets/js/admin.js"></script>
+
+<script>
+/* ---------- UI helpers ---------- */
+const $ = s => document.querySelector(s);
+const tokenKey = 'amaranth_report_token';
+
+function setMsg(el, text, ok){
+  el.textContent = text || '';
+  if (!text) {
+    el.className = 'muted';
+  } else {
+    el.className = ok ? 'ok' : 'err';
+  }
+}
+
+/* ---------- Token UI ---------- */
+$('#saveToken').addEventListener('click', () => {
+  const t = $('#token').value.trim();
+  if(!t){
+    setMsg($('#tokenMsg'), 'Enter a token first', false);
+    return;
+  }
+  try { localStorage.setItem(tokenKey, t); } catch(e){}
+  setMsg($('#tokenMsg'), 'Token saved for this browser', true);
+});
+
+$('#clearToken').addEventListener('click', () => {
+  try { localStorage.removeItem(tokenKey); } catch(e){}
+  $('#token').value = '';
+  setMsg($('#tokenMsg'), 'Token cleared', true);
+});
+
+/* ---------- Logout ---------- */
+$('#logoutBtn').addEventListener('click', ()=>{
+  try{
+    localStorage.removeItem('amaranth_report_token');
+    localStorage.removeItem('amaranth_admin_ok');
+    localStorage.removeItem('amaranth_admin_pw_ok');
+  }catch(e){}
+  location.href = '/admin/login.html';
+});
+
+/* ---------- Feature Flags ---------- */
+function readFlagsFromUI(){
+  return {
+    supplies_live: !!$('#flag_supplies_live')?.checked,
+    supplies_preview: !!$('#flag_supplies_preview')?.checked,
+    banquets_v2_preview: !!$('#flag_banquets_v2_preview')?.checked,
+    catalog_v2_preview: !!$('#flag_catalog_v2_preview')?.checked,
+  };
+}
+
+function applyFlagsToUI(flags){
+  const f = flags || {};
+  $('#flag_supplies_live').checked = !!f.supplies_live;
+  $('#flag_supplies_preview').checked = !!f.supplies_preview;
+  $('#flag_banquets_v2_preview').checked = !!f.banquets_v2_preview;
+  $('#flag_catalog_v2_preview').checked = !!f.catalog_v2_preview;
+
+  // Show preview button only when preview flag is enabled
+  const btn = $('#suppliesPreviewBtn');
+  if (btn) btn.style.display = f.supplies_preview ? 'inline-flex' : 'none';
+}
+
+async function loadFeatureFlags(){
+  try{
+    setMsg($('#flagsMsg'), 'Loading flags…');
+    const res = await fetch('/api/router?type=feature_flags', {
+      method: 'GET',
+      headers: { ...Admin.tokenHeader() }
+    });
+    const j = await res.json().catch(()=>null);
+    if(!res.ok) throw new Error(j?.error || res.statusText);
+
+    applyFlagsToUI(j?.flags || {});
+    setMsg($('#flagsMsg'), 'Flags loaded.', true);
+    return (j?.flags || {});
+  }catch(e){
+    setMsg($('#flagsMsg'), 'Failed to load flags: ' + (e?.message || e), false);
+    applyFlagsToUI({});
+    return {};
+  }
+}
+
+/* ---------- Load CURRENT ENV/OVERRIDES (router settings) ---------- */
+async function loadSettings(){
+  $('#currentJson').textContent = 'Loading…';
+  try{
+    const res = await fetch('/api/router?type=settings', {
+      method: 'GET',
+      headers: { ...Admin.tokenHeader() }
+    });
+    const j = await res.json();
+    if(!res.ok) throw new Error((j && j.error) || res.statusText);
+
+    $('#fromEmail').value = j.overrides?.RESEND_FROM ?? j.env?.RESEND_FROM ?? '';
+    $('#ccList').value    = j.overrides?.REPORTS_CC ?? j.env?.REPORTS_CC ?? '';
+    $('#maintOn').value   = String(j.overrides?.MAINTENANCE_ON ?? j.env?.MAINTENANCE_ON ?? 'false');
+    $('#maintMsg').value  = j.overrides?.MAINTENANCE_MESSAGE ?? j.env?.MAINTENANCE_MESSAGE ?? '';
+
+    $('#currentJson').textContent = JSON.stringify(j, null, 2);
+    setMsg($('#emailMsg'), '');
+    setMsg($('#maintInfo'), '');
+  }catch(e){
+    $('#currentJson').textContent = 'Failed to load: ' + (e?.message || e);
+  }
+}
+
+/* ---------- Load CHECKOUT MODE (router) ---------- */
+async function loadCheckoutMode(){
+  try{
+    const res = await fetch('/api/router?type=checkout_mode', {
+      method: 'GET',
+      headers: { ...Admin.tokenHeader() }
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j?.error || res.statusText);
+
+    const raw = j.raw || {};
+    const mode = raw.stripeMode || 'test';
+    const liveStart = raw.liveStart || '';
+    const liveEnd = raw.liveEnd || '';
+
+    let radio = document.querySelector(`input[name="checkoutMode"][value="${mode}"]`);
+    if (!radio) radio = document.querySelector('input[name="checkoutMode"][value="test"]');
+    if (radio) radio.checked = true;
+
+    function applyDT(iso, dateSel, timeSel){
+      const dateEl = $(dateSel);
+      const timeEl = $(timeSel);
+      if (!dateEl || !timeEl) return;
+
+      if (!iso){ dateEl.value = ''; timeEl.value = ''; return; }
+      const d = new Date(iso);
+      if (isNaN(d.getTime())){ dateEl.value = ''; timeEl.value = ''; return; }
+
+      const isoStr = d.toISOString(); // UTC
+      dateEl.value = isoStr.slice(0,10);
+      timeEl.value = isoStr.slice(11,16);
+    }
+
+    applyDT(liveStart, '#liveStartDate', '#liveStartTime');
+    applyDT(liveEnd,   '#liveEndDate',   '#liveEndTime');
+
+    const eff = j.effectiveChannel || 'test';
+    $('#modeInfo').textContent = 'Current effective channel: ' + eff.toUpperCase();
+  }catch(e){
+    $('#modeInfo').textContent = 'Failed to load checkout mode: ' + (e?.message || e);
+  }
+}
+
+/* ---------- Save settings + checkout mode + feature flags ---------- */
+$('#saveAll').addEventListener('click', async ()=>{
+  const RESEND_FROM = $('#fromEmail').value.trim();
+  const REPORTS_CC = $('#ccList').value.trim();
+  const MAINTENANCE_ON = $('#maintOn').value === 'true';
+  const MAINTENANCE_MESSAGE = $('#maintMsg').value;
+
+  // checkout mode bits
+  const modeRadio = document.querySelector('input[name="checkoutMode"]:checked');
+  const stripeMode = modeRadio ? modeRadio.value : 'test';
+
+  const liveStartDate = $('#liveStartDate').value;
+  const liveStartTime = $('#liveStartTime').value;
+  const liveEndDate   = $('#liveEndDate').value;
+  const liveEndTime   = $('#liveEndTime').value;
+
+  const buildIso = (d, t) => {
+    if (!d) return '';
+    const time = (t && t.trim()) ? t.trim() : '00:00';
+    return `${d}T${time}:00Z`;
+  };
+
+  const modePayload = {
+    stripeMode,
+    liveStart: buildIso(liveStartDate, liveStartTime),
+    liveEnd: buildIso(liveEndDate, liveEndTime),
+  };
+
+  const flagsPayload = { flags: readFlagsFromUI() };
+
+  try{
+    // 1) save basic settings
+    const resSettings = await fetch('/api/router?action=save_settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...Admin.tokenHeader()
+      },
+      body: JSON.stringify({ RESEND_FROM, REPORTS_CC, MAINTENANCE_ON, MAINTENANCE_MESSAGE })
+    });
+    if (!resSettings.ok) {
+      const j = await resSettings.json().catch(() => null);
+      throw new Error(j?.error || resSettings.statusText || 'Save failed');
+    }
+
+    // 2) save checkout mode + window
+    const resMode = await fetch('/api/router?action=save_checkout_mode', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...Admin.tokenHeader()
+      },
+      body: JSON.stringify(modePayload)
+    });
+    if (!resMode.ok) {
+      const j2 = await resMode.json().catch(() => null);
+      throw new Error(j2?.error || resMode.statusText || 'Mode save failed');
+    }
+
+    // 3) save feature flags
+    const resFlags = await fetch('/api/router?action=save_feature_flags', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...Admin.tokenHeader()
+      },
+      body: JSON.stringify(flagsPayload)
+    });
+    if (!resFlags.ok) {
+      const j3 = await resFlags.json().catch(() => null);
+      throw new Error(j3?.error || resFlags.statusText || 'Flags save failed');
+    }
+
+    setMsg($('#saveMsg'), 'Saved settings, checkout mode, and feature flags!', true);
+
+    await loadSettings();
+    await loadCheckoutMode();
+    await loadFeatureFlags();
+  }catch(e){
+    setMsg($('#saveMsg'), 'Save failed: ' + (e?.message || e), false);
+  }
+});
+
+$('#reload').addEventListener('click', async ()=>{
+  await loadSettings();
+  await loadCheckoutMode();
+  await loadFeatureFlags();
+});
+
+/* init */
+loadSettings();
+loadCheckoutMode();
+loadFeatureFlags();
+</script>
+
+<!-- === Cron Schedule Help Tooltip === -->
+<style>
+  .cron-help-btn {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:22px;height:22px;
+    border-radius:50%;
+    background:#444;
+    color:#fff;
+    font-weight:bold;
+    cursor:pointer;
+    margin-left:6px;
+    font-size:13px;
+  }
+  .cron-help-box {
+    display:none;
+    background:#f9fafb;
+    border:1px solid #ddd;
+    border-radius:10px;
+    padding:10px 14px;
+    margin-top:8px;
+    font-size:14px;
+    line-height:1.4;
+    color:#333;
+  }
+  .cron-help-box.show { display:block; }
+  .cron-help-box code {
+    background:#eee;
+    padding:1px 4px;
+    border-radius:4px;
+  }
+</style>
+
+<div id="cronHelpContainer" style="margin-top:12px;">
+  <div class="cron-help-btn" id="cronHelpBtn">?</div>
+  <div class="cron-help-box" id="cronHelpBox">
+    <strong>About Cron Format</strong><br><br>
+    <code>* * * * *</code> has 5 parts: minute, hour, day, month, day-of-week.<br><br>
+    <table style="border-collapse:collapse;width:100%;font-size:13px;margin-bottom:8px;">
+      <tr><td><code>*</code></td><td>every value</td></tr>
+      <tr><td><code>0</code></td><td>minute 0 (top of the hour)</td></tr>
+      <tr><td><code>14</code></td><td>2 PM UTC ≈ 10 AM ET (summer)</td></tr>
+      <tr><td><code>15</code></td><td>3 PM UTC ≈ 10 AM ET (winter)</td></tr>
+      <tr><td><code>1</code></td><td>1st day of month</td></tr>
+    </table>
+    <b>Examples:</b><br>
+    <code>0 * * * *</code> → every hour on the hour<br>
+    <code>0 14 1 * *</code> → 10 AM ET on the 1st (monthly)<br><br>
+    ⚙️ <em>Note:</em> Vercel uses UTC time. Your Admin Settings choose the local trigger
+    (America/New_York) even if these run hourly on the server.
+  </div>
+</div>
+
+<script>
+  document.getElementById("cronHelpBtn").addEventListener("click", () => {
+    document.getElementById("cronHelpBox").classList.toggle("show");
+  });
+</script>
+
+</body>
+</html>

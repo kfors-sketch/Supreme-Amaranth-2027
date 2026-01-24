@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Amaranth Admin — Debug Tools 2</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #f7f7fb;
+      color: #111;
+      margin: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fee2e2;
+      color: #991b1b;
+      font-weight: 600;
+      font-size: 12px;
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+      padding: 14px;
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+    .card p {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: #4b5563;
+    }
+    .card-output {
+      grid-column: 1 / -1;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0;
+    }
+    button {
+      cursor: pointer;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      font-size: 13px;
+      padding: 6px 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button.primary {
+      background: #4f46e5;
+      color: #fff;
+      border-color: #4f46e5;
+    }
+    button.danger {
+      background: #b91c1c;
+      color: #fff;
+      border-color: #b91c1c;
+    }
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+    label {
+      font-size: 13px;
+      color: #374151;
+      display: block;
+      margin-bottom: 4px;
+    }
+    input[type="email"],
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
+      max-width: 360px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 13px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+    small {
+      font-size: 11px;
+      color: #6b7280;
+      display: block;
+      margin-top: 2px;
+    }
+    pre {
+      background: #020617;
+      color: #e5e7eb;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      overflow: auto;
+      max-height: 360px;
+      border: 1px solid #0f172a;
+      margin: 0;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      background: #eef2ff;
+      color: #3730a3;
+      margin-left: 6px;
+    }
+    .status-ok { color: #166534; }
+    .status-bad { color: #b91c1c; }
+    .token-warning {
+      font-size: 12px;
+      color: #b91c1c;
+      margin-top: 6px;
+    }
+    a.admin-link {
+      font-size: 13px;
+      color: #4f46e5;
+      text-decoration: none;
+    }
+    a.admin-link:hover {
+      text-decoration: underline;
+    }
+    .inline-note {
+      font-size: 11px;
+      color: #6b7280;
+      margin-left: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Debug Tools 2 (Advanced)</h1>
+        <div class="pill">Danger — use carefully on production</div>
+      </div>
+      <nav class="nav-links">
+        <a class="admin-link" href="/admin/index.html">← Admin Hub</a>
+        &nbsp;·&nbsp;
+        <a class="admin-link" href="/admin/debug.html">Debug 1</a>
+      </nav>
+    </header>
+
+    <div class="cards-grid">
+
+      <!-- Auth / Context --------------------------------------------------- -->
+      <div class="card">
+        <h3>Auth / Context</h3>
+        <p id="authStatus2">Checking admin token…</p>
+        <p class="token-warning" id="tokenWarning2" style="display:none;">
+          No admin token found. Please log in via
+          <a href="/admin/login.html" class="admin-link">Admin Login</a> first.
+        </p>
+        <small>All admin-only actions on this page use <code>Authorization: Bearer &lt;token&gt;</code>.</small>
+      </div>
+
+      <!-- Settings & KV ---------------------------------------------------- -->
+      <div class="card">
+        <h3>Effective Settings Snapshot <span class="badge">POST action=get_settings</span></h3>
+        <p>
+          Loads env values, KV overrides, and the final <code>effective</code>
+          settings used by the site.
+        </p>
+        <div class="btn-row">
+          <button id="btnLoadSettings" class="primary">Load Effective Settings</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>KV Peek <span class="badge">GET ?type=debug_kv_peek</span></h3>
+        <p>
+          Fetches and dumps a single KV key as JSON for quick inspection.
+        </p>
+        <label for="kvKeyPreset">Common keys</label>
+        <select id="kvKeyPreset">
+          <option value="">(choose a preset…)</option>
+          <option value="settings:overrides">settings:overrides</option>
+          <option value="itemcfg:index">itemcfg:index</option>
+          <option value="orders:index">orders:index</option>
+          <option value="banquets">banquets</option>
+          <option value="addons">addons</option>
+          <option value="products">products</option>
+          <option value="orders:years:index">orders:years:index</option>
+        </select>
+        <small>Choosing a preset will fill the key field below.</small>
+
+        <label for="kvKeyInput" style="margin-top:8px;">KV key</label>
+        <input type="text" id="kvKeyInput" placeholder="e.g. settings:overrides" />
+        <small>Requires a debug handler like <code>?type=debug_kv_peek&amp;key=...</code>.</small>
+
+        <div class="btn-row" style="margin-top:8px;">
+          <button id="btnKvPeek" class="primary">Load KV Key</button>
+        </div>
+      </div>
+
+      <!-- Scheduler / Chair & Cron ---------------------------------------- -->
+      <div class="card">
+        <h3>Scheduler / Cron Triggers <span class="badge">POST actions</span></h3>
+        <p>
+          Manually run the same logic used by cron jobs, using your current admin token.
+        </p>
+        <div class="btn-row">
+          <button id="btnRunMonthly" class="primary">
+            Run Scheduled Chair Reports (current-month)
+          </button>
+          <button id="btnRunEndOfEvent">
+            Run End-of-Event Reports
+          </button>
+        </div>
+        <small>
+          Uses <code>action=send_monthly_chair_reports</code> and
+          <code>action=send_end_of_event_reports</code> in <code>/api/router</code>.
+        </small>
+      </div>
+
+      <!-- Mode & Purge card ------------------------------------------ -->
+      <div class="card">
+        <h3>Mode & Purge Orders <span class="badge">POST action=get_settings / purge_orders</span></h3>
+        <p>
+          Shows the current effective mode and any configured live window.
+          Provides <strong>per-mode purge</strong> buttons for cleanup.
+        </p>
+
+        <p>
+          <strong>Current effective mode:</strong>
+          <span id="modeLabel">Loading…</span>
+        </p>
+        <p>
+          <strong>Current live window:</strong>
+          <span id="modeWindow">Loading…</span>
+        </p>
+
+        <div class="btn-row" style="margin-top:8px;">
+          <button id="btnPurgeTest" class="danger">
+            Purge Test Orders
+          </button>
+          <button id="btnPurgeLiveTest" class="danger">
+            Purge Live-Test Orders
+          </button>
+        </div>
+
+        <small>
+          These call <code>action=purge_orders</code> with
+          <code>mode="test"</code> or <code>"live_test"</code>. Server still enforces safety, including
+          the <code>confirm="PURGE ORDERS"</code> phrase.
+        </small>
+      </div>
+
+      <div class="card">
+        <h3>Chair Routing Snapshot <span class="badge">GET ?type=debug_chair_routing</span></h3>
+        <p>
+          Shows each registered item’s chair emails, publish window, and
+          <code>reportFrequency</code>, so you can see where reports are going.
+        </p>
+        <p class="inline-note">
+          Can be implemented either as a new <code>debug_chair_routing</code> type
+          or by reusing <code>debug_itemcfg_health</code>.
+        </p>
+        <div class="btn-row">
+          <button id="btnChairRouting" class="primary">Load Chair Routing</button>
+        </div>
+      </div>
+
+      <!-- Mail & Contact --------------------------------------------------- -->
+      
+      <div class="card">
+        <h3>Supplies / Cart Debug <span class="badge">client + API</span></h3>
+        <p>
+          Quick checks for the Supplies category and cart wiring (helps when items show on <code>supplies.html</code> but don’t appear on <code>order.html</code>).
+        </p>
+
+        <div class="btn-row">
+          <button id="btnLoadSuppliesScript">Load /assets/js/supplies.js</button>
+          <button id="btnShowSuppliesLocal">Show SUPPLIES_ITEMS (client)</button>
+          <button id="btnShowSuppliesApi">Fetch catalog_items (API)</button>
+        </div>
+
+        <label for="cartKeyInput">Cart localStorage key</label>
+        <input id="cartKeyInput" type="text" placeholder="amaranth_cart" />
+
+        <div class="btn-row">
+          <button id="btnDumpCart">Dump cart from localStorage</button>
+          <button id="btnListCartKeys">List likely cart keys</button>
+        </div>
+
+        <div class="hint">
+          Tip: If <code>SUPPLIES_ITEMS</code> loads but the cart is empty, the click handler on <code>supplies.html</code> may be writing to a different key than <code>order.html</code> reads.
+        </div>
+      </div>
+
+
+      <div class="card">
+        <h3>Mail Log History <span class="badge">GET ?type=debug_mail_recent</span></h3>
+        <p>
+          Returns the most recent N entries from the mail log
+          (chair reports, contact forms, test messages, etc.).
+        </p>
+        <label for="mailLimit">Max entries</label>
+        <input type="text" id="mailLimit" value="20" />
+        <small>Requires a handler like <code>?type=debug_mail_recent&amp;limit=20</code>.</small>
+        <div class="btn-row" style="margin-top:8px;">
+          <button id="btnMailRecent" class="primary">Load Recent Mail Log</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Contact Form Simulator <span class="badge">POST action=contact_form</span></h3>
+        <p>
+          Sends a test message through the normal contact form pipeline
+          using a clearly marked debug payload.
+        </p>
+
+        <label for="cfName">Name</label>
+        <input type="text" id="cfName" placeholder="Test User" />
+
+        <label for="cfEmail" style="margin-top:8px;">Email</label>
+        <input type="email" id="cfEmail" placeholder="test@example.com" />
+
+        <label for="cfTopic" style="margin-top:8px;">Topic</label>
+        <select id="cfTopic">
+          <option value="website">Website / technical</option>
+          <option value="banquets">Banquets</option>
+          <option value="addons">Grand Court add-ons</option>
+          <option value="catalog">Product catalog</option>
+          <option value="order">Order / checkout</option>
+          <option value="general">General question</option>
+        </select>
+
+        <label for="cfMessage" style="margin-top:8px;">Message</label>
+        <textarea id="cfMessage" placeholder="Debug test message from /admin/debug2.html"></textarea>
+
+        <small>
+          Uses <code>action=contact_form</code> with a page marker of <code>debug2</code>.
+        </small>
+
+        <div class="btn-row" style="margin-top:8px;">
+          <button id="btnContactTest" class="primary">Send Contact Test</button>
+        </div>
+      </div>
+
+      <!-- Orders & Payments ------------------------------------------------- -->
+      <div class="card">
+        <h3>Order Search <span class="badge">GET ?type=debug_find_orders</span></h3>
+        <p>
+          Finds recent orders by purchaser, attendee, email, or partial ID.
+          Returns a small list with IDs and basic info.
+        </p>
+        <label for="orderSearchQuery">Search query</label>
+        <input type="text" id="orderSearchQuery" placeholder="email, name, or part of order ID" />
+        <label for="orderSearchLimit" style="margin-top:8px;">Max results</label>
+        <input type="text" id="orderSearchLimit" value="20" />
+        <small>Requires <code>?type=debug_find_orders&amp;q=...&amp;limit=...</code>.</small>
+        <div class="btn-row" style="margin-top:8px;">
+          <button id="btnOrderSearch" class="primary">Search Orders</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Stripe PaymentIntent Preview <span class="badge">GET ?type=debug_pi_preview</span></h3>
+        <p>
+          Fetches a PaymentIntent by ID and shows amount, status, charges, etc.
+        </p>
+        <label for="piPreviewId">PaymentIntent ID</label>
+        <input type="text" id="piPreviewId" placeholder="pi_123..." />
+        <small>Requires a handler like <code>?type=debug_pi_preview&amp;pi_id=...</code>.</small>
+        <div class="btn-row" style="margin-top:8px;">
+          <button id="btnPiPreview" class="primary">Run PI Preview</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Order + Refunds Preview <span class="badge">GET ?type=debug_order_refunds</span></h3>
+        <p>
+          Shows an order plus any refunds recorded against its payments.
+        </p>
+        <label for="refundOrderId">Order ID</label>
+        <input type="text" id="refundOrderId" placeholder="order_123 / internal ID" />
+        <small>
+          Can be implemented separately, or re-use your existing
+          <code>debug_order_preview</code> and include refund rows.
+        </small>
+        <div class="btn-row" style="margin-top:8px;">
+          <button id="btnRefundPreview" class="primary">Run Order + Refunds Preview</button>
+        </div>
+      </div>
+
+      <!-- Output ----------------------------------------------------------- -->
+      <div class="card card-output">
+        <h3>Output</h3>
+        <p>
+          Results from the selected action will appear here as formatted JSON.
+          <span id="outputStatus2" class="status-ok"></span>
+        </p>
+        <pre id="output2">{ }</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Existing helper JS (if any) -->
+  <script src="/admin/debug2.js"></script>
+
+  <!-- Inline JS just for Mode & Purge + basic status ---------------------- -->
+  <script>
+    (function () {
+      const authStatus = document.getElementById("authStatus2");
+      const tokenWarning = document.getElementById("tokenWarning2");
+      const modeLabel = document.getElementById("modeLabel");
+      const modeWindow = document.getElementById("modeWindow");
+      const outEl = document.getElementById("output2");
+      const statusEl = document.getElementById("outputStatus2");
+
+      const btnPurgeTest = document.getElementById("btnPurgeTest");
+      const btnPurgeLiveTest = document.getElementById("btnPurgeLiveTest");
+
+      const btnLoadSettings = document.getElementById("btnLoadSettings");
+
+      function getToken() {
+        try {
+          // If you later expose window.Admin.getToken() we can use that too
+          return localStorage.getItem("amaranth_report_token") || "";
+        } catch (e) {
+          return "";
+        }
+      }
+
+      function authHeaders() {
+        const t = getToken();
+        return t ? { Authorization: "Bearer " + t } : {};
+      }
+
+      function setOutputStatus(text, isError) {
+        if (!statusEl) return;
+        statusEl.textContent = text || "";
+        statusEl.classList.toggle("status-bad", !!isError);
+        statusEl.classList.toggle("status-ok", !isError);
+      }
+
+      function setOutput(data) {
+        if (!outEl) return;
+        try {
+          outEl.textContent = JSON.stringify(data, null, 2);
+        } catch {
+          outEl.textContent = String(data);
+        }
+      }
+
+      function updateAuthStatus() {
+        const t = getToken();
+        if (t) {
+          authStatus.textContent =
+            "Admin token found in localStorage. Protected actions will use it.";
+          authStatus.classList.remove("status-bad");
+          authStatus.classList.add("status-ok");
+          tokenWarning.style.display = "none";
+        } else {
+          authStatus.textContent = "No admin token detected in this browser.";
+          authStatus.classList.remove("status-ok");
+          authStatus.classList.add("status-bad");
+          tokenWarning.style.display = "";
+        }
+      }
+
+      async function loadModeAndWindow() {
+        const token = getToken();
+        if (!token) {
+          modeLabel.textContent = "unknown (no token)";
+          modeWindow.textContent = "unknown";
+          return;
+        }
+
+        try {
+          setOutputStatus("Loading effective settings for mode/window…");
+          const res = await fetch("/api/router?action=get_settings", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...authHeaders(),
+            },
+            body: JSON.stringify({}),
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || res.statusText);
+          }
+
+          const env = data.env || {};
+          const eff = data.effective || {};
+
+          const mode =
+            eff.SITE_MODE ||
+            eff.MODE ||
+            env.SITE_MODE ||
+            env.MODE ||
+            "test";
+
+          const start =
+            eff.EVENT_START ||
+            env.EVENT_START ||
+            "";
+          const end =
+            eff.EVENT_END ||
+            env.EVENT_END ||
+            "";
+
+          let windowText = "None configured";
+          if (start || end) {
+            windowText = (start || "—") + " → " + (end || "—");
+          }
+
+          modeLabel.textContent = mode;
+          modeWindow.textContent = windowText;
+
+          setOutputStatus("Settings loaded for mode/purge.");
+          // Also push into output so you can see the raw payload if needed
+          setOutput({
+            settingsMode: mode,
+            liveWindow: windowText,
+            raw: data,
+          });
+        } catch (e) {
+          console.error(e);
+          modeLabel.textContent = "error";
+          modeWindow.textContent = "failed to load";
+          setOutputStatus(
+            "Failed to load settings: " + (e.message || e),
+            true
+          );
+          setOutput({ error: String(e.message || e) });
+        }
+      }
+
+      async function doPurge(mode) {
+        const token = getToken();
+        if (!token) {
+          alert("No admin token found. Log in via Admin Login first.");
+          return;
+        }
+
+        const msg =
+          'This will purge orders for mode "' +
+          mode +
+          '".\n\n' +
+          'Make sure you have backups/exports first.\n\n' +
+          'Server requires the confirmation text "PURGE ORDERS". Continue?';
+
+        if (!confirm(msg)) return;
+
+        try {
+          setOutputStatus('Purging orders for mode "' + mode + '"…', true);
+          const res = await fetch("/api/router?action=purge_orders", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...authHeaders(),
+            },
+            body: JSON.stringify({
+              mode,
+              confirm: "PURGE ORDERS",
+            }),
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || res.statusText);
+          }
+
+          setOutputStatus(
+            'Purge complete for mode "' + mode + '".',
+            false
+          );
+          setOutput(data);
+          alert('Purge complete for mode "' + mode + '".');
+        } catch (e) {
+          console.error(e);
+          setOutputStatus(
+            "Purge failed: " + (e.message || e),
+            true
+          );
+          setOutput({ error: String(e.message || e) });
+          alert("Purge failed: " + (e.message || e));
+        }
+      }
+
+      // Wire purge buttons
+      if (btnPurgeTest) {
+        btnPurgeTest.addEventListener("click", () => doPurge("test"));
+      }
+      if (btnPurgeLiveTest) {
+        btnPurgeLiveTest.addEventListener("click", () =>
+          doPurge("live_test")
+        );
+      }
+
+      // Also let the "Load Effective Settings" button refresh the mode card
+      if (btnLoadSettings) {
+        btnLoadSettings.addEventListener("click", () => {
+          // let whatever your external debug2.js does run,
+          // then also refresh our mode snapshot a moment later
+          setTimeout(loadModeAndWindow, 300);
+        });
+      }
+
+      // Init
+      updateAuthStatus();
+      loadModeAndWindow();
+    })();
+  </script>
+</body>
+</html>
