@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Thank You for Your Order</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f7f7fb;color:#111;margin:0}
+    .container{max-width:720px;margin:32px auto;padding:0 16px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:18px}
+    .muted{color:#6b7280}
+    .btn{height:40px;border:1px solid #d1d5db;background:#111;color:#fff;border-radius:10px;padding:0 14px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+    .val{font-weight:700}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left}
+    th{text-align:left;background:#f9fafb}
+
+    /* Receipt (email HTML) container styling */
+    .receiptHtmlWrap{margin-top:16px}
+    .receiptHtml{border:1px solid #e5e7eb;border-radius:12px;padding:12px;background:#fff}
+    .receiptHtml table{width:100%;border-collapse:collapse}
+    .receiptHtml td,.receiptHtml th{padding:6px;border-bottom:1px solid #e5e7eb}
+    .receiptHtml h1,.receiptHtml h2,.receiptHtml h3{margin:10px 0 6px}
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="card">
+      <h1 style="margin:0 0 8px">Thank you for your order!</h1>
+      <div class="muted" id="status">Finalizing your receipt…</div>
+
+      <div id="details" style="margin-top:14px;display:none">
+        <div class="row"><div>Order #</div><div class="val" id="ordId">—</div></div>
+        <div class="row"><div>Paid</div><div class="val" id="paid">$0.00</div></div>
+        <div class="row"><div>Email</div><div class="val" id="email">—</div></div>
+
+        <!-- Stripe-style summary table (optional) -->
+        <table id="orderTable" style="display:none">
+          <thead>
+            <tr><th>Item</th><th>Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Line</th></tr>
+          </thead>
+          <tbody id="orderLines"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="text-align:right;font-weight:700">Total</td>
+              <td id="orderTotal" style="font-weight:700;text-align:right">$0.00</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <!-- Email-style receipt HTML goes HERE -->
+        <div id="receiptHtmlWrap" class="receiptHtmlWrap" style="display:none">
+          <div id="receiptHtml" class="receiptHtml"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn" href="/home.html">Back to Home</a>
+        <a class="btn" href="/order.html" id="newOrderBtn">New Order</a>
+      </div>
+    </div>
+  </main>
+
+<script>
+(function(){
+  const q = new URLSearchParams(location.search);
+  const sid = q.get('sid') || q.get('session_id');
+  const nowTs = () => Date.now();
+
+  // Clear cart
+  try {
+    if (window.Cart && Cart.clear) Cart.clear();
+    localStorage.removeItem('amaranth_cart');
+    localStorage.setItem('amaranth_cart_ping', String(Date.now()));
+  } catch(e){}
+
+  const status  = document.getElementById('status');
+  const details = document.getElementById('details');
+
+  if (!sid) {
+    status.textContent = 'Payment completed, but no session id was provided.';
+    return;
+  }
+
+  // 1) Finalize checkout (idempotent)
+  fetch('/api/router?action=finalize_checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sid })
+  })
+  .then(r => r.json())
+  .then(async (j) => {
+    if (!j || j.error) {
+      status.textContent = (j && j.error) ? j.error : 'Could not finalize order.';
+      return;
+    }
+
+    // Belt & suspenders
+    fetch('/api/router?type=finalize_order&sid=' + encodeURIComponent(sid) + '&t=' + nowTs(), { cache: 'no-store' })
+      .catch(()=>{});
+
+    // 2) Stripe session basics
+    try {
+      const sessResp = await fetch('/api/router?type=checkout_session&id=' + encodeURIComponent(sid) + '&t=' + nowTs(), { cache:'no-store' });
+      const s = await sessResp.json().catch(()=>null);
+      if (s && s.id) {
+        status.textContent = 'Payment confirmed.';
+        details.style.display = 'block';
+        document.getElementById('ordId').textContent = s.id;
+        const total = (s.amount_total||0)/100;
+        document.getElementById('paid').textContent = total.toLocaleString(undefined,{style:'currency',currency:'USD'});
+        document.getElementById('email').textContent = (s.customer_details && s.customer_details.email) || '—';
+        document.getElementById('orderTotal').textContent = total.toLocaleString(undefined,{style:'currency',currency:'USD'});
+      } else {
+        status.textContent = 'Payment confirmed.';
+      }
+    } catch(_) {
+      status.textContent = 'Payment confirmed.';
+    }
+
+    // 3) Load the SAME receipt HTML used in the email
+    try {
+      const rh = await fetch('/api/router?type=order_receipt_html&oid=' + encodeURIComponent(sid) + '&t=' + nowTs(), { cache:'no-store' });
+      const rj = await rh.json().catch(()=>null);
+      const html = (rj && (rj.html || (rj.data && rj.data.html))) || '';
+      if (html) {
+        document.getElementById('receiptHtml').innerHTML = html;
+        document.getElementById('receiptHtmlWrap').style.display = 'block';
+      }
+    } catch(_){}
+
+    // Optional: still show Stripe-style line items table
+    try {
+      const orderResp = await fetch('/api/router?type=order&oid=' + encodeURIComponent(sid) + '&t=' + nowTs(), { cache:'no-store' });
+      const orderJson = await orderResp.json().catch(()=>null);
+      const ord = orderJson && orderJson.order ? orderJson.order : null;
+      if (ord && Array.isArray(ord.lines) && ord.lines.length) {
+        const rows = ord.lines.map(li => ({
+          item: li.itemName,
+          qty: li.qty,
+          price: (li.unitPrice||0)/100,
+          gross: (li.gross || (li.qty||1)*(li.unitPrice||0))/100
+        }));
+        const tbody = document.getElementById('orderLines');
+        tbody.innerHTML = rows.map(r =>
+          `<tr>
+            <td>${r.item}</td>
+            <td>${r.qty}</td>
+            <td style="text-align:right">$${Number(r.price||0).toFixed(2)}</td>
+            <td style="text-align:right">$${Number(r.gross||0).toFixed(2)}</td>
+          </tr>`
+        ).join('');
+        // Stripe summary table intentionally hidden
+        // document.getElementById('orderTable').style.display = 'table';
+      }
+    } catch(_){}
+  })
+  .catch(()=>{ status.textContent = 'Could not finalize order.'; });
+})();
+</script>
+</body>
+</html>
