@@ -20,10 +20,4 @@ function buildCSVSelected(rows, headers) {
   return "\uFEFF" + out.join("\n");
 }
 
-// ---------------------------------------------------------------------------
-// XLSX helper: objects → XLSX buffer
-// ---------------------------------------------------------------------------
-
-async 
-
 export { buildCSV, buildCSVSelected };
