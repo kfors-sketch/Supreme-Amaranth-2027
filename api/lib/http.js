@@ -71,6 +71,29 @@ async function readJsonBody(req) {
   }
 }
 
+
+// ============================================================================
+// URL helper
+// - Normalizes req.url into a full URL object.
+// - Works in Vercel Node/Serverless where req.url is typically a path + query.
+// ============================================================================
+function getUrl(req) {
+  const raw = (req && req.url) ? String(req.url) : "/";
+  const host =
+    (req && req.headers && (req.headers["x-forwarded-host"] || req.headers.host)) ||
+    "localhost";
+  const proto =
+    (req && req.headers && (req.headers["x-forwarded-proto"] || req.headers["x-forwarded-protocol"])) ||
+    "https";
+  try {
+    return new URL(raw, `${proto}://${host}`);
+  } catch {
+    // Fallback: strip anything weird
+    return new URL("/", `${proto}://${host}`);
+  }
+}
+
+
 // ---- Admin auth helper ----
 
 
