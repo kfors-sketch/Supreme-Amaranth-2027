@@ -120,5 +120,4 @@ export {
   attachImmutableOrderHash,
   verifyOrderHash,
   patchOrderCourtFields,
-  rehashOrderAfterAdminPatch,
 };
