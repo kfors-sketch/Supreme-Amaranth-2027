@@ -3,32 +3,82 @@
 // Admin route module for the split router.
 //
 // IMPORTANT:
+// - Vercel/Next.js API routes use Node's IncomingMessage for req (no req.json()).
+//   So we must read the raw body ourselves.
 // - Return true when a request is handled so /api/router.js does NOT fall through
 //   to router.legacy.js (which will return {"error":"unknown-action"}).
-// - Keep this module low-risk: no dependencies on legacy router exports.
 //
 
 import { kv } from "@vercel/kv";
+import { verifyAdminToken } from "../admin/security.js";
 
-// Header name used by your front-end Admin.tokenHeader() helpers
+// Accept either:
+// - Authorization: Bearer <token>   (matches legacy requireAdminAuth)
+// - x-admin-token: <token>          (matches your front-end Admin.tokenHeader)
 const TOKEN_HEADER = "x-admin-token";
 
-// Optional: allow a simple env password fallback (set in Vercel env vars).
-// NOTE: rotate secrets if they were ever shared.
 const ADMIN_PASSWORD_ENV = (process.env.ADMIN_PASSWORD || "").trim();
-
-// Optional: if you store a long-lived token in KV, set it here.
 const KV_ADMIN_TOKEN_KEY = "admin:token";
 
-async function requireAdmin(req) {
-  const token = (req.headers.get(TOKEN_HEADER) || "").trim();
+// -------------------- body helpers (Node req) --------------------
+async function readRawBody(req) {
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
 
+async function readJsonBody(req) {
+  const buf = await readRawBody(req);
+  const text = buf.toString("utf8") || "";
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const err = new Error("invalid-json");
+    err.statusCode = 400;
+    err.details = e?.message || String(e);
+    throw err;
+  }
+}
+
+// -------------------- admin auth --------------------
+async function requireAdmin(req) {
+  const headers = req?.headers || {};
+
+  // 1) Bearer token (preferred; matches legacy)
+  const rawAuth = headers.authorization || headers.Authorization || "";
+  const auth = String(rawAuth || "");
+  if (auth.toLowerCase().startsWith("bearer ")) {
+    const token = auth.slice(7).trim();
+    if (!token) {
+      const err = new Error("unauthorized");
+      err.statusCode = 401;
+      throw err;
+    }
+
+    const legacy = (process.env.REPORT_TOKEN || "").trim();
+    if (legacy && token === legacy) return;
+
+    try {
+      const result = await verifyAdminToken(token);
+      if (result?.ok) return;
+    } catch (e) {
+      // fall through
+    }
+
+    const err = new Error("unauthorized");
+    err.statusCode = 401;
+    throw err;
+  }
+
+  // 2) x-admin-token (front-end header)
+  const token = String(headers[TOKEN_HEADER] || headers[TOKEN_HEADER.toLowerCase()] || "").trim();
   if (token) {
-    // 1) Prefer a KV token if present
     const expected = (await kv.get(KV_ADMIN_TOKEN_KEY)) || "";
     if (expected && token === String(expected)) return;
 
-    // 2) Fallback: allow env password match (useful during early setup)
     if (ADMIN_PASSWORD_ENV && token === ADMIN_PASSWORD_ENV) return;
   }
 
@@ -44,19 +94,23 @@ export async function handleAdminGET(_req, _res) {
 export async function handleAdminPOST(req, res) {
   let body;
   try {
-    body = await req.json();
-  } catch {
-    return false; // not JSON, let legacy handle
+    body = await readJsonBody(req);
+  } catch (e) {
+    // If it's invalid JSON, respond here; otherwise fall back.
+    if (e?.statusCode === 400 && e?.message === "invalid-json") {
+      res.status(400).json({ ok: false, error: "invalid-json", details: e?.details || "" });
+      return true;
+    }
+    return false;
   }
 
   const action = body?.action;
   if (!action) return false;
 
   try {
-    // Quick proof that THIS file is live
+    // Proof this module is live
     if (action === "admin_ping") {
-      // No auth needed; it's harmless and helps verify routing.
-      res.status(200).json({ ok: true, msg: "admin.js is live" });
+      res.status(200).json({ ok: true, msg: "admin.js is live (node-body parser ok)" });
       return true;
     }
 
@@ -94,14 +148,10 @@ export async function handleAdminPOST(req, res) {
       return true;
     }
 
-    // Not handled here
     return false;
   } catch (e) {
     const status = e?.statusCode || 500;
-    res.status(status).json({
-      ok: false,
-      error: String(e?.message || e),
-    });
+    res.status(status).json({ ok: false, error: String(e?.message || e) });
     return true;
   }
 }
