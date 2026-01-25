@@ -9,19 +9,28 @@ import { handleAdminGET, handleAdminPOST } from "./routes/admin.js";
 
 export default async function handler(req, res) {
   // Order matters: small, low-risk modules first; legacy last.
+
+  // ---- VISITS (must never kill page load) ----
   try {
-    if (req.method === "GET") {
-      if (await handleVisitsGET(req, res)) return;
-      if (await handleAdminGET(req, res)) return;
-    } else if (req.method === "POST") {
-      if (await handleVisitsPOST(req, res)) return;
-      if (await handleAdminPOST(req, res)) return;
-    }
+    if (await handleVisitsGET(req, res)) return;
+    if (await handleVisitsPOST(req, res)) return;
   } catch (e) {
-    // If a new module throws, fall back to legacy error handling.
-    // (Legacy already formats REQ_ERR/REQ_OK with requestId.)
-    console.error("[router] split-module threw; falling back to legacy", e);
+    // swallow visit errors completely
+    console.error("visit handler error (ignored):", e);
   }
 
-  return legacyHandler(req, res);
+  // ---- ADMIN ----
+  try {
+    if (await handleAdminGET(req, res)) return;
+    if (await handleAdminPOST(req, res)) return;
+  } catch (e) {
+    return errResponse(res, 500, "admin-handler-failed", req, e);
+  }
+
+  // ---- LEGACY FALLBACK ----
+  try {
+    return legacyHandler(req, res);
+  } catch (e) {
+    return errResponse(res, 500, "router-failure", req, e);
+  }
 }
