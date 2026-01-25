@@ -16,31 +16,6 @@ function tokenFingerprint(token) {
   return crypto.createHash("sha256").update(t).digest("hex").slice(0, 6);
 }
 
-async function getEffectiveSettings() {
-  const overrides = await kvHgetallSafe("settings:overrides");
-  const env = {
-    RESEND_FROM: RESEND_FROM,
-    REPORTS_CC: process.env.REPORTS_CC || "",
-    REPORTS_BCC: process.env.REPORTS_BCC || "",
-    SITE_BASE_URL: process.env.SITE_BASE_URL || "",
-    MAINTENANCE_ON: process.env.MAINTENANCE_ON === "true",
-    MAINTENANCE_MESSAGE: process.env.MAINTENANCE_MESSAGE || "",
-    REPORTS_SEND_SEPARATE: String(process.env.REPORTS_SEND_SEPARATE ?? "true"),
-    REPLY_TO,
-    EVENT_START: process.env.EVENT_START || "",
-    EVENT_END: process.env.EVENT_END || "",
-    REPORT_ORDER_DAYS: process.env.REPORT_ORDER_DAYS || "",
-    LOCKDOWN_MODE: process.env.LOCKDOWN_MODE || "off",
-    LOCKDOWN_ALLOW_IPS: process.env.LOCKDOWN_ALLOW_IPS || "",
-    LOCKDOWN_ALLOW_TOKEN_FPS: process.env.LOCKDOWN_ALLOW_TOKEN_FPS || "",
-  };
-  const effective = {
-    ...env,
-    ...overrides,
-    MAINTENANCE_ON: String(overrides.MAINTENANCE_ON ?? env.MAINTENANCE_ON) === "true",
-  };
-  return { env, overrides, effective };
-}
 
 async function getLockdownConfig() {
   const { effective } = await getEffectiveSettings();
