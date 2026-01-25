@@ -119,5 +119,4 @@ export {
   computeOrderHash,
   attachImmutableOrderHash,
   verifyOrderHash,
-  patchOrderCourtFields,
 };
