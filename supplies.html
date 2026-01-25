@@ -122,9 +122,8 @@
 
     // MASTER VIEW: only for preview=1 or admin token.
     // This controls whether the *list renders* at all.
-    const MASTER_SUPPLIES_ON = (isPreviewMode() || hasAdminToken());
-
-    /* =======================
+    const MASTER_SUPPLIES_ON = true; // TEMP: site not public yet; show full supplies like other pages
+/* =======================
        Helpers
        ======================= */
     function money(n){
@@ -283,9 +282,8 @@
         const canOrder = (
           window.Cart &&
           typeof Cart.addLine === 'function' &&
-          item.active === true &&
-          isWithinWindow(item, now) &&
-          price > 0
+          price > 0 &&
+          !reqOnly
         );
 
         const reqOnly = isRequestOnly(item) || (price <= 0 && item.active === false);
