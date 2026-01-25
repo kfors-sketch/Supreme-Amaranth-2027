@@ -238,8 +238,9 @@ export async function handleVisitsGET(req, res) {
       });
       return REQ_OK(res, { requestId, ...out }), true;
     } catch (e) {
-      errResponse(res, 500, "track-visit-failed", req, e);
-      return true;
+      // Visits must never break page load: return 200 and mark as not tracked.
+      console.error("[visits] track_visit failed (ignored):", e);
+      return REQ_OK(res, { requestId, ok: true, tracked: false, reason: "track-visit-failed" }), true;
     }
   }
 
@@ -342,7 +343,9 @@ export async function handleVisitsPOST(req, res) {
     REQ_OK(res, { requestId, ...out });
     return true;
   } catch (e) {
-    errResponse(res, 500, "track-visit-failed", req, e);
+    // Visits must never break page load: return 200 and mark as not tracked.
+    console.error("[visits] track_visit failed (ignored):", e);
+    REQ_OK(res, { requestId, ok: true, tracked: false, reason: "track-visit-failed" });
     return true;
   }
 }
