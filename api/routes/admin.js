@@ -2,31 +2,34 @@
 //
 // Admin route module for the split router.
 //
-// IMPORTANT:
-// - Vercel/Next.js API routes use Node's IncomingMessage for req (no req.json()).
-//   So we must read the raw body ourselves.
-// - Return true when a request is handled so /api/router.js does NOT fall through
-//   to router.legacy.js (which will return {"error":"unknown-action"}).
+// KEY FIX:
+// - When we read the request body here, we MUST cache it on req._rawBodyBuffer
+//   so router.legacy.js can reuse it if we return false (fall-through).
+//   Otherwise legacy sees an empty stream and returns {"error":"unknown-action"}.
 //
 
 import { kv } from "@vercel/kv";
 import { verifyAdminToken } from "../admin/security.js";
 
-// Accept either:
-// - Authorization: Bearer <token>   (matches legacy requireAdminAuth)
-// - x-admin-token: <token>          (matches your front-end Admin.tokenHeader)
 const TOKEN_HEADER = "x-admin-token";
-
 const ADMIN_PASSWORD_ENV = (process.env.ADMIN_PASSWORD || "").trim();
 const KV_ADMIN_TOKEN_KEY = "admin:token";
 
 // -------------------- body helpers (Node req) --------------------
 async function readRawBody(req) {
+  // Reuse if already read by legacy or another module
+  if (req._rawBodyBuffer) return req._rawBodyBuffer;
+
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
-  return Buffer.concat(chunks);
+  const buf = Buffer.concat(chunks);
+
+  // ✅ Critical: cache for legacy fall-through
+  req._rawBodyBuffer = buf;
+
+  return buf;
 }
 
 async function readJsonBody(req) {
@@ -64,7 +67,7 @@ async function requireAdmin(req) {
     try {
       const result = await verifyAdminToken(token);
       if (result?.ok) return;
-    } catch (e) {
+    } catch {
       // fall through
     }
 
@@ -92,11 +95,11 @@ export async function handleAdminGET(_req, _res) {
 }
 
 export async function handleAdminPOST(req, res) {
+  // Always parse once; body will be cached for legacy if we return false.
   let body;
   try {
     body = await readJsonBody(req);
   } catch (e) {
-    // If it's invalid JSON, respond here; otherwise fall back.
     if (e?.statusCode === 400 && e?.message === "invalid-json") {
       res.status(400).json({ ok: false, error: "invalid-json", details: e?.details || "" });
       return true;
@@ -108,13 +111,11 @@ export async function handleAdminPOST(req, res) {
   if (!action) return false;
 
   try {
-    // Proof this module is live
     if (action === "admin_ping") {
-      res.status(200).json({ ok: true, msg: "admin.js is live (node-body parser ok)" });
+      res.status(200).json({ ok: true, msg: "admin.js is live (fallthrough-safe)" });
       return true;
     }
 
-    // One-time cleanup: remove accidental "banquets" created as addons
     if (action === "admin_purge_addons") {
       await requireAdmin(req);
 
@@ -124,18 +125,13 @@ export async function handleAdminPOST(req, res) {
         return true;
       }
 
-      // YOY/year bucket coverage (safe sweep)
       const years = ["2025", "2026", "2027", "2028"];
 
       for (const id of ids) {
-        // delete the item record
         await kv.del(`itemcfg:${id}`);
-
-        // remove from global indexes
         await kv.srem("itemcfg:index:addons", id);
         await kv.srem("itemcfg:index:all", id);
 
-        // remove from likely year/Yoy indexes
         for (const y of years) {
           await kv.srem(`itemcfg:index:addons:${y}`, id);
           await kv.srem(`itemcfg:index:all:${y}`, id);
@@ -148,6 +144,7 @@ export async function handleAdminPOST(req, res) {
       return true;
     }
 
+    // Not handled here; legacy will handle using req._rawBodyBuffer
     return false;
   } catch (e) {
     const status = e?.statusCode || 500;
