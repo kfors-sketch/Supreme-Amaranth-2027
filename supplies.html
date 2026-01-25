@@ -283,10 +283,10 @@
           window.Cart &&
           typeof Cart.addLine === 'function' &&
           price > 0 &&
-          !reqOnly
+          !isRequestOnly(item) &&
+          !(price <= 0 && item.active === false)
         );
-
-        const reqOnly = isRequestOnly(item) || (price <= 0 && item.active === false);
+const reqOnly = isRequestOnly(item) || (price <= 0 && item.active === false);
 
         const desc = (item.description || item.notes || '').trim();
         const descHtml = desc ? `<div class="sup-desc">${escHtml(desc)}</div>` : ``;
