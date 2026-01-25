@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 
-function objectsToXlsxBuffer(
+async function objectsToXlsxBuffer(
   columns,
   rows,
   headerLabels = {},
