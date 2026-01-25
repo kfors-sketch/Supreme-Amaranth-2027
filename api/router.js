@@ -26,23 +26,3 @@ export default async function handler(req, res) {
 
   return legacyHandler(req, res);
 }
-// ADMIN: PURGE BAD ADDONS (one-time use)
-if (action === "admin_purge_addons") {
-  adminAuth(req);
-
-  const { ids } = body || {};
-  if (!Array.isArray(ids) || !ids.length) {
-    return REQ_ERR(res, "Missing addon ids");
-  }
-
-  for (const id of ids) {
-    await kvDelSafe(`itemcfg:${id}`);
-    await kvSremSafe("itemcfg:index:addons", id);
-    await kvSremSafe("itemcfg:index:all", id);
-  }
-
-  return REQ_OK(res, {
-    purged: ids.length,
-    ids,
-  });
-}
