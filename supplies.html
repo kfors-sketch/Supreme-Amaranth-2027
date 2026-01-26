@@ -520,7 +520,7 @@ const reqOnly = isRequestOnly(item) || (price <= 0 && item.active === false);
           return;
         }
 
-        const note = `Court: ${courtName} (#${courtNumber}) | Date Organized: ${dateOrg} | Location: ${location}`;
+        const note = `Name: ${courtName} | Number: ${courtNumber} | Date of Org.: ${dateOrg} | Location: ${location}`;
 
         Cart.addLine({
           attendeeId: '(unassigned)',
@@ -718,11 +718,11 @@ const reqOnly = isRequestOnly(item) || (price <= 0 && item.active === false);
             <input id="q_phone" type="tel" required />
           </label>
           <label class="field">
-            <span>Court Name</span>
+            <span>Name</span>
             <input id="q_court" type="text" required />
           </label>
           <label class="field">
-            <span>Court #</span>
+            <span>Number</span>
             <input id="q_courtno" type="text" required />
           </label>
           <label class="field field-full">
@@ -761,19 +761,19 @@ const reqOnly = isRequestOnly(item) || (price <= 0 && item.active === false);
 
       <form id="detailsForm" class="modal-body">
         <p class="muted" style="margin:0 0 10px;">
-          When ordering a seal, please provide Court Name, Court #, Date Organized, and Location.
+          When ordering seal, give Name, Number, Date of Org., Location.
         </p>
         <div class="modal-grid">
           <label class="field">
-            <span>Court Name</span>
+            <span>Name</span>
             <input id="d_court" type="text" required />
           </label>
           <label class="field">
-            <span>Court #</span>
+            <span>Number</span>
             <input id="d_courtno" type="text" required />
           </label>
           <label class="field">
-            <span>Date Organized</span>
+            <span>Date of Org.</span>
             <input id="d_dateorg" type="text" placeholder="MM/DD/YYYY" required />
           </label>
           <label class="field">
