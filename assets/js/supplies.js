@@ -169,14 +169,14 @@
     // =========================
     // STANDARDS & BANNERS
     // =========================
-    requestOnly("STANDARDS & BANNERS", "Standard, White Satin", "Prices"),
-    requestOnly("STANDARDS & BANNERS", "Banners, 4 Red Satin", "Available"),
-    requestOnly("STANDARDS & BANNERS", "Banners, Red Satin, (each)", "Upon Request"),
+    requestOnly("STANDARDS & BANNERS", "Standard, White Satin", "REQUEST_PRICE_ONLY", { hidePriceText: true }),
+    requestOnly("STANDARDS & BANNERS", "Banners, 4 Red Satin", "REQUEST_PRICE_ONLY", { hidePriceText: true }),
+    requestOnly("STANDARDS & BANNERS", "Banners, Red Satin, (each)", "REQUEST_PRICE_ONLY", { hidePriceText: true }),
     requestOnly("STANDARDS & BANNERS", 'Knobs, Stan. & Banner Set 1" & 3/4"', "Request"),
-    requestOnly("STANDARDS & BANNERS", "Tassels & Cords, Standard (each)", "Prices"),
-    requestOnly("STANDARDS & BANNERS", "Tassels & Cords, Banners (each)", "Available"),
-    requestOnly("STANDARDS & BANNERS", "Rods & Ends for Standards", "Upon Request"),
-    requestOnly("STANDARDS & BANNERS", "Rods & Ends for Banners", "Request"),
+    requestOnly("STANDARDS & BANNERS", "Tassels & Cords, Standard (each)", "REQUEST_PRICE_ONLY", { hidePriceText: true }),
+    requestOnly("STANDARDS & BANNERS", "Tassels & Cords, Banners (each)", "REQUEST_PRICE_ONLY", { hidePriceText: true }),
+    requestOnly("STANDARDS & BANNERS", "Rods & Ends for Standards", "REQUEST_PRICE_ONLY", { hidePriceText: true }),
+    requestOnly("STANDARDS & BANNERS", "Rods & Ends for Banners", "REQUEST_PRICE_ONLY", { hidePriceText: true }),
 
     // =========================
     // STAFF TOPS
