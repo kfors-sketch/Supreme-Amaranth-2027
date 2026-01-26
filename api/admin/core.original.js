@@ -785,6 +785,15 @@ async function saveOrderFromSession(sessionLike, extra = {}) {
           meta.courtNo ||
           meta.courtNum ||
           "",
+attendeeJurisdiction:
+  meta.attendeeJurisdiction ||
+  meta.attendee_jurisdiction ||
+  meta.attendeeJurisdictionName ||
+  meta.attendee_jurisdiction_name ||
+  meta.jurisdiction ||
+  meta.jurisdictionName ||
+  meta.jurisdiction_name ||
+  "",
         attendeeNotes: meta.attendeeNotes || "",
         dietaryNote: meta.dietaryNote || "",
         corsageChoice: meta.corsageChoice || meta.corsage_choice || meta.corsageType || meta.corsage_type || meta.choice || meta.selection || meta.style || meta.color || "",
@@ -945,6 +954,7 @@ function flattenOrderToRows(o) {
       attendee_phone: li.meta?.attendeePhone || "",
             court: li.meta?.attendeeCourt || li.meta?.attendeeCourtName || li.meta?.attendee_court || li.meta?.attendee_court_name || li.meta?.court || li.meta?.courtName || li.meta?.court_name || li.meta?.attendeeCourtName || "",
             court_number: li.meta?.attendeeCourtNumber || li.meta?.attendeeCourtNo || li.meta?.attendeeCourtNum || li.meta?.attendee_court_number || li.meta?.attendee_court_no || li.meta?.attendee_court_num || li.meta?.courtNumber || li.meta?.court_no || li.meta?.courtNo || li.meta?.courtNum || "",
+      jurisdiction: li.meta?.attendeeJurisdiction || li.meta?.attendee_jurisdiction || li.meta?.jurisdiction || li.meta?.jurisdictionName || li.meta?.jurisdiction_name || "",
       attendee_addr1: li.meta?.attendeeAddr1 || "",
       attendee_addr2: li.meta?.attendeeAddr2 || "",
       attendee_city: li.meta?.attendeeCity || "",
@@ -1997,7 +2007,7 @@ async function sendItemReportEmailInternal({
     const cols = Array.isArray(EMAIL_COLUMNS) ? [...EMAIL_COLUMNS] : [];
     const insertAfterKey = "attendee_phone";
     const afterIdx = cols.indexOf(insertAfterKey);
-    const want = ["court", "court_number"];
+    const want = ["court", "court_number", "jurisdiction"];
     // Insert in a stable spot near attendee info
     for (let i = want.length - 1; i >= 0; i--) {
       const key = want[i];
@@ -2010,6 +2020,7 @@ async function sendItemReportEmailInternal({
       ...EMAIL_HEADER_LABELS,
       court: "Court",
       court_number: "Court #",
+        jurisdiction: "Jurisdiction",
     };
   }
 
@@ -2019,7 +2030,7 @@ async function sendItemReportEmailInternal({
     const cols = Array.isArray(EMAIL_COLUMNS) ? [...EMAIL_COLUMNS] : [];
     const insertAfterKey = "attendee_phone";
     const afterIdx = cols.indexOf(insertAfterKey);
-    const want = ["court", "court_number"];
+    const want = ["court", "court_number", "jurisdiction"];
     for (let i = want.length - 1; i >= 0; i--) {
       const key = want[i];
       if (cols.includes(key)) continue;
@@ -2031,6 +2042,7 @@ async function sendItemReportEmailInternal({
       ...EMAIL_HEADER_LABELS,
       court: "Court",
       court_number: "Court #",
+        jurisdiction: "Jurisdiction",
     };
   }
   // Corsage/Boutonniere: Wear Style is included in the Item text, so we do NOT add a separate column.
