@@ -194,7 +194,7 @@
     // =========================
     // HISTORIES
     // =========================
-    requestOnly("HISTORIES", "Membership Promotion/History Brouchure", "N/A"),
+    requestOnly("HISTORIES", "Membership Promotion/History Brouchure", "N/A", { description: "" }),
 
     // =========================
     // LETTERS
