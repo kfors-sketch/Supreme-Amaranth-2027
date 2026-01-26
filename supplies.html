@@ -134,8 +134,9 @@
     function normalizePrice(p){
       const n = Number(p);
       if (!isFinite(n)) return 0;
-      // Treat 0<n<1 as cents accidentally stored
-      return (n > 0 && n < 1) ? Math.round(n * 100) : n;
+      // Prices in supplies.js are stored in DOLLARS (e.g., 0.25 = $0.25).
+      // Do not auto-scale sub-dollar values.
+      return n;
     }
 
     function escHtml(s){
