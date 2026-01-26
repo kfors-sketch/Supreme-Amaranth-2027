@@ -219,9 +219,7 @@
     // =========================
     // BIBLES
     // =========================
-    requestOnly("BIBLES", "White, Altar Not stocked", "N/A"),
-    priced("BIBLES", "Black Cubes (each)", 0.25),
-
+    requestOnly("BIBLES", "White, Altar Not stocked", "N/A", { description: "" }),
     // =========================
     // FLAG & TOPS
     // =========================
