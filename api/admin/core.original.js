@@ -2442,9 +2442,14 @@ async function emailWeeklyReceiptsZip({ mode = "test" } = {}) {
 
   const orders = await loadAllOrdersWithRetry();
   const wantMode = String(mode || "test").toLowerCase();
-  const weekKey = weekKeyUTC(Date.now())
-  const { startMs, endMs } = weekRangeUTC(Date.now());
 
+  // Weekly ZIP runs on a cron (often Monday). We want the *previous completed* week:
+  // Monday 00:00 UTC → next Monday 00:00 UTC, shifted back by 7 days.
+  const now = Date.now();
+  const weekKey = weekKeyUTC(now - 7 * 86400000);
+  const { startMs: thisWeekStart, endMs: thisWeekEnd } = weekRangeUTC(now);
+  const startMs = thisWeekStart - 7 * 86400000;
+  const endMs = thisWeekEnd - 7 * 86400000;
   // ✅ LIVE/LIVE_TEST: only send once per month (even if cron runs daily)
   // TEST: allowed to send repeatedly (useful while testing)
   const enforceMonthlyOnce = wantMode === "live" || wantMode === "live_test";
@@ -2453,7 +2458,7 @@ async function emailWeeklyReceiptsZip({ mode = "test" } = {}) {
   if (enforceMonthlyOnce) {
     const already = await kvGetSafe(sentKey, null);
     if (already) {
-      return { ok: true, skipped: true, month: weekKey, mode: wantMode, reason: "already-sent" };
+      return { ok: true, skipped: true, month: weekKey, week: weekKey, mode: wantMode, reason: "already-sent" };
     }
   }
 
@@ -2518,7 +2523,7 @@ async function emailWeeklyReceiptsZip({ mode = "test" } = {}) {
       });
     }
 
-    return { ok: true, month: weekKey, mode: wantMode };
+    return { ok: true, month: weekKey, week: weekKey, mode: wantMode };
   }
 
   return { ok: false, error: retry.error?.message || String(retry.error) };
