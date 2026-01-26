@@ -316,9 +316,9 @@ const reqOnly = isRequestOnly(item) || (price <= 0 && item.active === false);
         }
 
         const priceLabel =
-          (item.category === "STANDARDS & BANNERS")
-            ? ""
-            : (canOrder ? money(price) : getPriceLabel(item));
+            (reqOnly)
+              ? ""
+              : (canOrder ? money(price) : getPriceLabel(item));
 
         return `
           <div class="sup-cell" data-id="${escHtml(item.id)}">
