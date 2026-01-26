@@ -2858,6 +2858,20 @@ if (isPreReg && !votingLabel) {
                           l.meta?.courtNo ||
                           l.meta?.courtNum ||
                           ""),
+attendeeJurisdiction:
+  (l.meta?.attendeeJurisdiction ||
+    l.meta?.attendee_jurisdiction ||
+    l.meta?.jurisdiction ||
+    l.meta?.jurisdictionName ||
+    l.meta?.jurisdiction_name ||
+    ""),
+attendee_jurisdiction:
+  (l.meta?.attendeeJurisdiction ||
+    l.meta?.attendee_jurisdiction ||
+    l.meta?.jurisdiction ||
+    l.meta?.jurisdictionName ||
+    l.meta?.jurisdiction_name ||
+    ""),
                       votingStatus:
                         (l.meta?.votingStatus ||
                           l.meta?.voting_status ||
