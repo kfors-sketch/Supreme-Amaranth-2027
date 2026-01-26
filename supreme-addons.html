@@ -64,7 +64,7 @@
         <div class="grid-3">
           <input name="courtName" placeholder="Court Name *" required>
           <input name="courtNumber" placeholder="Court # *" required>
-          <span></span>
+          <input name="jurisdiction" placeholder="Jurisdiction *" required>
         </div>
 
         <!-- NEW: Membership (Voting / Non-Voting) -->
@@ -292,6 +292,7 @@
         const courtBits = [];
         if (a?.courtName) courtBits.push(String(a.courtName).replace(/</g,'&lt;'));
         if (a?.courtNumber) courtBits.push('#' + String(a.courtNumber).replace(/</g,'&lt;'));
+        if (a?.jurisdiction) courtBits.push('(' + String(a.jurisdiction).replace(/</g,'&lt;') + ')');
         const courtLine = courtBits.length
           ? `<div class="tiny" style="opacity:.85;margin-top:2px;">Court: ${courtBits.join(' ')}</div>`
           : '';
@@ -342,8 +343,10 @@ return `
         const courtName   = (fd.get('courtName')||'').trim();
         const courtNumber = (fd.get('courtNumber')||'').trim();
         
-      if (!courtName || !courtNumber) {
-        alert('Court Name and Court # are required.');
+      const jurisdiction = (fd.get('jurisdiction')||'').trim();
+      
+      if (!courtName || !courtNumber || !jurisdiction) {
+        alert('Court Name, Court #, and Jurisdiction are required.');
         return;
       }
 const memberType  = (fd.get('memberType')||'').trim(); // "voting" | "non_voting"
@@ -394,6 +397,7 @@ const memberType  = (fd.get('memberType')||'').trim(); // "voting" | "non_voting
         Cart.addAttendee({
           name, email, phone, title, notes,
           courtName, courtNumber, memberType,
+          jurisdiction,
           address1, address2, city, state, postal, country
         });
         attForm.reset();
@@ -452,7 +456,25 @@ const memberType  = (fd.get('memberType')||'').trim(); // "voting" | "non_voting
           if (copy?.meta && Object.prototype.hasOwnProperty.call(copy.meta,'attendeeNotes')){
             delete copy.meta.attendeeNotes;
           }
-          const out = _add(copy);
+                    // Ensure attendee court/jurisdiction is included for Stripe + chair emails
+          try{
+            const st = (window.Cart && typeof Cart.get === 'function') ? (Cart.get() || {}) : {};
+            const attId = copy?.attendeeId;
+            const att = (st.attendees||[]).find(a => String(a.id) === String(attId));
+            if (att){
+              copy.meta = copy.meta || {};
+              if (copy.meta.court == null) copy.meta.court = att.courtName || '';
+              if (copy.meta.court_number == null) copy.meta.court_number = att.courtNumber || '';
+              if (copy.meta.jurisdiction == null) copy.meta.jurisdiction = att.jurisdiction || '';
+              if (copy.meta.memberType == null) copy.meta.memberType = att.memberType || '';
+              if (copy.meta.attendeeName == null) copy.meta.attendeeName = att.name || '';
+              if (copy.meta.attendeeTitle == null) copy.meta.attendeeTitle = att.title || '';
+              if (copy.meta.attendeeEmail == null) copy.meta.attendeeEmail = att.email || '';
+              if (copy.meta.attendeePhone == null) copy.meta.attendeePhone = att.phone || '';
+            }
+          }catch(e){}
+
+const out = _add(copy);
 
           // ✅ Match Banquets UX: ping + confirmation popup (addons page only)
           try {

@@ -64,7 +64,7 @@
         <div class="grid-3">
           <input name="courtName" placeholder="Court Name *" required>
           <input name="courtNumber" placeholder="Court # *" required>
-          <span></span>
+          <input name="jurisdiction" placeholder="Jurisdiction *" required>
         </div>
         <div class="grid-3">
           <div style="display:flex;flex-direction:column;gap:6px;">
@@ -262,6 +262,7 @@
         const courtBits = [];
         if (a?.courtName) courtBits.push(escHtml(a.courtName));
         if (a?.courtNumber) courtBits.push('#' + escHtml(a.courtNumber));
+        if (a?.jurisdiction) courtBits.push('(' + escHtml(a.jurisdiction) + ')');
         const courtLine = courtBits.length ? `<div class="tiny" style="opacity:.85;margin-top:2px;">Court: ${courtBits.join(' ')}</div>` : '';
 
         const memberLabel = (a?.memberType === 'voting') ? 'Voting' : ((a?.memberType === 'non_voting') ? 'Non-Voting' : '');
@@ -308,8 +309,10 @@ return `
       const courtName   = (fd.get('courtName')||'').trim();
       const courtNumber = (fd.get('courtNumber')||'').trim();
       
-      if (!courtName || !courtNumber) {
-        alert('Court Name and Court # are required.');
+      const jurisdiction = (fd.get('jurisdiction')||'').trim();
+      
+      if (!courtName || !courtNumber || !jurisdiction) {
+        alert('Court Name, Court #, and Jurisdiction are required.');
         return;
       }
 const memberType  = (fd.get('memberType')||'').trim(); // "voting" | "non_voting"
@@ -355,6 +358,7 @@ if (!address1) missing.push('Address line 1');
         memberType,
         courtNumber,
         courtName,
+        jurisdiction,
         address1, address2, city, state, postal, country
       });
       form.reset();
@@ -492,6 +496,11 @@ if (!address1) missing.push('Address line 1');
             attendeeState:  att?.state    || "",
             attendeePostal: att?.postal   || "",
             attendeeCountry:att?.country  || "US"
+                      // court / jurisdiction (for reports + chair emails)
+            court: att?.courtName || "",
+            court_number: att?.courtNumber || "",
+            jurisdiction: att?.jurisdiction || "",
+            memberType: att?.memberType || ""
           }
         });
 
