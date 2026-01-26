@@ -108,8 +108,8 @@
     priced("BOOKS", "Large Ritual - Cover", 8.0),
     priced("BOOKS", "Large Ritual - Pair (2)", 30.0),
 
-    priced("BOOKS", "2024 Small Rtual updates Individual", 15.0),
-    requestOnly("BOOKS", "2024 Large Ritual updates", "Listed (price not shown on this sheet)"),
+    requestOnly("BOOKS", "2024 Small Ritual Updates", "Available upon request"),
+    requestOnly("BOOKS", "2024 Large Ritual Updates", "Available upon request"),
 
     priced("BOOKS", "Secretary's Hand Book", 27.0),
     priced("BOOKS", "Court Book, Rules & Regulations", 6.0),
