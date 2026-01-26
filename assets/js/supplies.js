@@ -72,11 +72,11 @@
 
   const requestOnly = (category, name, note, extra = {}) => ({
     ...base(category, name),
-    // Always inactive — these are "upon request / N/A"
+    // Always inactive — request price handled by button only
     active: false,
     price: 0,
-    priceText: String(note || "Available upon request"),
-    description: String(note || "Available upon request"),
+    priceText: "",
+    description: "",
     ...extra,
   });
 
