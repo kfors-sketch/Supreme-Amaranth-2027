@@ -102,9 +102,8 @@
 
     priced("BOOKS", "Small Ritual- Filler", 8.5),
     priced("BOOKS", "Small Ritual - Cover", 6.5),
-    priced("BOOKS", "Small Ritual - Individual", 8.5),
-
-    priced("BOOKS", "Large Large Ritual- Filler", 14.5),
+    
+    priced("BOOKS", "Large Ritual- Filler", 14.5),
     priced("BOOKS", "Large Ritual - Cover", 8.0),
     
     requestOnly("BOOKS", "2024 Small Ritual Updates", "Available upon request", { description: "" }),
