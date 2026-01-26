@@ -108,8 +108,8 @@
     priced("BOOKS", "Large Ritual - Cover", 8.0),
     priced("BOOKS", "Large Ritual - Pair (2)", 30.0),
 
-    requestOnly("BOOKS", "2024 Small Ritual Updates", "Available upon request"),
-    requestOnly("BOOKS", "2024 Large Ritual Updates", "Available upon request"),
+    requestOnly("BOOKS", "2024 Small Ritual Updates", "Available upon request", { description: "" }),
+    requestOnly("BOOKS", "2024 Large Ritual Updates", "Available upon request", { description: "" }),
 
     priced("BOOKS", "Secretary's Hand Book", 27.0),
     priced("BOOKS", "Court Book, Rules & Regulations", 6.0),
