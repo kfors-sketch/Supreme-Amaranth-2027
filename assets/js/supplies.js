@@ -123,7 +123,7 @@
     priced("CARDS", "Dues Cards #124A (per sheet of 5) sub to change", 0.45),
     priced("CARDS", "Honorary Membership Cards, Sub. Ct.", 0.1),
     priced("CARDS", "Honorary Member Cards, Gr. Ct.", 0.2),
-    requestOnly("CARDS", "Escort Cards form for printing available", "Escort Cards form for printing available", { description: "" }),
+    requestOnly("CARDS", "Escort Cards form for printing available", "", { description: "" }),
     priced("CARDS", "Life Member Card #200", 0.25),
 
     // =========================
