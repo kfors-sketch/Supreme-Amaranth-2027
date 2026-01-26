@@ -308,14 +308,17 @@ const reqOnly = isRequestOnly(item) || (price <= 0 && item.active === false);
         } else if (reqOnly){
           controls = `
             <div class="sup-controls">
-              <button class="btn btn-outline request-price" data-id="${escHtml(item.id)}">Request Price</button>
+              <button class="btn btn-primary request-price" data-id="${escHtml(item.id)}">Request Price</button>
             </div>
           `;
         } else {
           controls = `<div class="sup-controls sup-controls-disabled"></div>`;
         }
 
-        const priceLabel = canOrder ? money(price) : getPriceLabel(item);
+        const priceLabel =
+          (item.category === "STANDARDS & BANNERS")
+            ? ""
+            : (canOrder ? money(price) : getPriceLabel(item));
 
         return `
           <div class="sup-cell" data-id="${escHtml(item.id)}">
