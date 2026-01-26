@@ -134,7 +134,7 @@
     priced("CERTIFICATES", "Honorary Membership #404 Sub Ct", 0.6),
     priced("CERTIFICATES", "Honorary Membership #127 Gr Ct", 0.6),
     priced("CERTIFICATES", "Life Member #202 (each)", 0.6),
-    requestOnly("CERTIFICATES", "Gold Seals (each)", "N/A"),
+    requestOnly("CERTIFICATES", "Gold Seals (each)", "N/A", { description: "" }),
 
     // =========================
     // CHARTERS
