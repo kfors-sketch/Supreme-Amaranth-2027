@@ -9,7 +9,7 @@
   <title>Charity</title>
 </head>
 
-<body class="shop" data-page="shop">
+<body class="shop charity-page" data-page="shop">
   <div class="wallpaper" style="--wallpaper: url('/assets/img/charity-wallpaper.jpg')"></div>
 
   <!-- Header / Logo + Nav -->
@@ -667,6 +667,19 @@
 .item-card .meta{font-size:12px;color:#555;margin-top:6px}
 .item-card .btn{margin-top:10px}
 @media (min-width:1100px){ .items-grid{grid-template-columns:repeat(4,minmax(220px,1fr));} }
+
+/* Charity-only wallpaper override (ensures this page uses charity-wallpaper) */
+body.charity-page{
+  background: none !important;
+}
+body.charity-page .wallpaper{
+  background-image: var(--wallpaper) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+
 </style>
 
   <!-- Core site scripts (order matters) -->
