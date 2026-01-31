@@ -117,7 +117,7 @@ nav a{ font-weight:500; }
 @media (max-aspect-ratio: 3/4) {
   .wallpaper::before {
     background-image: var(--wallpaper, url('/assets/img/supreme-2027-watermark.jpg')); /* different image for phones */
-    background-size: cover;
+    background-size: contain;
     background-position: center center;
     background-repeat: no-repeat;
   }
