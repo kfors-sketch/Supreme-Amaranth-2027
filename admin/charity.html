@@ -560,11 +560,11 @@
   async function loadInitial(){
     let loaded = false;
     try {
-      const r = await fetch('/api/router?type=charity', { cache: 'no-store' });
+      const r = await fetch('/api/router?type=catalog_items&cat=charity', { cache: 'no-store' });
       if (r.ok) {
         const j = await r.json();
-        if (Array.isArray(j?.charity)) {
-          modelAll = normalizeAll(j.charity);
+        if (Array.isArray(j?.items)) {
+          modelAll = normalizeAll(j.items);
           loaded = true;
         }
       }
@@ -593,11 +593,11 @@
     if (msg) msg.textContent = 'Refreshing…';
     let loaded = false;
     try{
-      const r = await fetch('/api/router?type=charity', { cache: 'no-store' });
+      const r = await fetch('/api/router?type=catalog_items&cat=charity', { cache: 'no-store' });
       if (r.ok) {
         const j = await r.json();
-        if (Array.isArray(j?.charity)){
-          modelAll = normalizeAll(j.charity);
+        if (Array.isArray(j?.items)){
+          modelAll = normalizeAll(j.items);
           loaded = true;
           if (msg) msg.textContent = 'Loaded from server.';
         }
@@ -886,15 +886,16 @@
     const headers = { "Content-Type": "application/json", ...Admin.tokenHeader() };
     const payload = normalizeAll(modelAll);
 
-    const res = await fetch("/api/router?action=save_charity", {
-      method: "POST", headers, body: JSON.stringify({ charity: payload })
+    const res = await fetch("/api/router?action=save_catalog_items&cat=charity", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ items: payload })
     });
     if (!res.ok) throw new Error("server rejected");
 
     try { await syncChairEmailConfigs(payload); } catch (_) {}
   }
-
-  async function onArchive(e){
+async function onArchive(e){
     const id = e.currentTarget.dataset.id;
     const idx = modelAll.findIndex(x => x.id === id);
     if (idx < 0) { document.getElementById('editMsg').textContent = 'Item not found.'; return; }
