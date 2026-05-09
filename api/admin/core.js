@@ -785,15 +785,6 @@ async function saveOrderFromSession(sessionLike, extra = {}) {
           meta.courtNo ||
           meta.courtNum ||
           "",
-attendeeJurisdiction:
-  meta.attendeeJurisdiction ||
-  meta.attendee_jurisdiction ||
-  meta.attendeeJurisdictionName ||
-  meta.attendee_jurisdiction_name ||
-  meta.jurisdiction ||
-  meta.jurisdictionName ||
-  meta.jurisdiction_name ||
-  "",
         attendeeNotes: meta.attendeeNotes || "",
         dietaryNote: meta.dietaryNote || "",
         corsageChoice: meta.corsageChoice || meta.corsage_choice || meta.corsageType || meta.corsage_type || meta.choice || meta.selection || meta.style || meta.color || "",
@@ -954,7 +945,6 @@ function flattenOrderToRows(o) {
       attendee_phone: li.meta?.attendeePhone || "",
             court: li.meta?.attendeeCourt || li.meta?.attendeeCourtName || li.meta?.attendee_court || li.meta?.attendee_court_name || li.meta?.court || li.meta?.courtName || li.meta?.court_name || li.meta?.attendeeCourtName || "",
             court_number: li.meta?.attendeeCourtNumber || li.meta?.attendeeCourtNo || li.meta?.attendeeCourtNum || li.meta?.attendee_court_number || li.meta?.attendee_court_no || li.meta?.attendee_court_num || li.meta?.courtNumber || li.meta?.court_no || li.meta?.courtNo || li.meta?.courtNum || "",
-      jurisdiction: li.meta?.attendeeJurisdiction || li.meta?.attendee_jurisdiction || li.meta?.jurisdiction || li.meta?.jurisdictionName || li.meta?.jurisdiction_name || "",
       attendee_addr1: li.meta?.attendeeAddr1 || "",
       attendee_addr2: li.meta?.attendeeAddr2 || "",
       attendee_city: li.meta?.attendeeCity || "",
@@ -1026,6 +1016,80 @@ function flattenOrderToRows(o) {
     });
   }
   return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Combine Directory + Proceedings rows (presentation only; no storage changes)
+// ---------------------------------------------------------------------------
+function combineDirectoryProceedingsRows(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const out = new Map();
+
+  const keyOf = (r) => [
+    String(r?.date || ""),
+    String(r?.attendee || ""),
+    String(r?.attendee_title || ""),
+    String(r?.attendee_phone || ""),
+    String(r?.attendee_email || ""),
+    String(r?.court || ""),
+    String(r?.court_number || ""),
+    String(r?.attendee_addr1 || ""),
+    String(r?.attendee_addr2 || ""),
+    String(r?.attendee_city || ""),
+    String(r?.attendee_state || ""),
+    String(r?.attendee_postal || ""),
+    String(r?.attendee_country || ""),
+    String(r?.id || ""),
+  ].join("|");
+
+  const pushNote = (parts, val) => {
+    const s = String(val || "").trim();
+    if (!s) return;
+    if (!parts.includes(s)) parts.push(s);
+  };
+
+  for (const r of list) {
+    const itemBase = baseKey(r?.item_id || r?._itemId || r?.item || "");
+    if (itemBase !== "directory" && itemBase !== "proceedings") continue;
+
+    const key = keyOf(r);
+    if (!out.has(key)) {
+      out.set(key, {
+        ...r,
+        directory: "",
+        directory_qty: "",
+        proceedings: "",
+        proceedings_qty: "",
+        directory_cost_value: 0,
+        proceedings_cost_value: 0,
+        notes_parts: [],
+      });
+    }
+
+    const row = out.get(key);
+    const qty = Number(r?.qty || 0);
+    const gross = Number(r?.gross || 0);
+    if (itemBase === "directory") {
+      row.directory = "Directory";
+      row.directory_qty = Number(row.directory_qty || 0) + qty;
+      row.directory_cost_value = Number(row.directory_cost_value || 0) + gross;
+    }
+    if (itemBase === "proceedings") {
+      row.proceedings = "Proceedings";
+      row.proceedings_qty = Number(row.proceedings_qty || 0) + qty;
+      row.proceedings_cost_value = Number(row.proceedings_cost_value || 0) + gross;
+    }
+    pushNote(row.notes_parts, r?.notes);
+  }
+
+  return Array.from(out.values()).map((row) => {
+    const next = { ...row };
+    next.notes = (next.notes_parts || []).join("; ");
+    delete next.notes_parts;
+    if (!next.directory_qty) next.directory_qty = "";
+    if (!next.proceedings_qty) next.proceedings_qty = "";
+    return next;
+  });
 }
 
 // --- Helper to estimate Stripe fee from items + shipping ---
@@ -1565,7 +1629,19 @@ async function objectsToXlsxBuffer(
   for (const r of rows || []) {
     const obj = {};
     for (const c of columns || []) obj[c] = r?.[c] ?? "";
-    ws.addRow(obj);
+    const added = ws.addRow(obj);
+    for (const c of columns || []) {
+      const v = r?.[c];
+      if (v && typeof v === "object" && !Array.isArray(v)) {
+        const cell = added.getCell(c);
+        if (Object.prototype.hasOwnProperty.call(v, "formula")) {
+          cell.value = { formula: v.formula, result: v.result ?? undefined };
+        }
+        if (v.numFmt) cell.numFmt = v.numFmt;
+        if (v.font) cell.font = v.font;
+        if (v.alignment) cell.alignment = v.alignment;
+      }
+    }
     if (spacerRows) ws.addRow({});
   }
 
@@ -1846,6 +1922,9 @@ async function sendItemReportEmailInternal({
   scope = "current-month",
   startDate,
   endDate,
+  // Accept admin UI aliases
+  startYMD,
+  endYMD,
   startMs: explicitStartMs,
   endMs: explicitEndMs,
   scheduledAt,
@@ -1908,12 +1987,12 @@ async function sendItemReportEmailInternal({
   }
 
   if (scope === "custom" && startMs == null && endMs == null) {
-    if (startDate) {
-      const dStart = parseYMD(startDate);
+    if (startDate || startYMD) {
+      const dStart = parseYMD(startDate || startYMD);
       if (!isNaN(dStart)) startMs = dStart;
     }
-    if (endDate) {
-      const dEnd = parseYMD(endDate);
+    if (endDate || endYMD) {
+      const dEnd = parseYMD(endDate || endYMD);
       if (!isNaN(dEnd)) endMs = dEnd + 24 * 60 * 60 * 1000;
     }
   }
@@ -1926,6 +2005,7 @@ async function sendItemReportEmailInternal({
   const isPreRegBase = base === "pre-reg";
   const isDirectoryBase = base === "directory";
   const isProceedingsBase = base === "proceedings";
+  const isDirectoryProceedingsCombined = isDirectoryBase || isProceedingsBase;
 
   const rosterAll = collectAttendeesFromOrders(ordersForMode, {
     includeAddress: includeAddressForThisItem,
@@ -1935,13 +2015,22 @@ async function sendItemReportEmailInternal({
   });
 
   const wantBase = (s) => String(s || "").toLowerCase().split(":")[0];
-  const filtered = rosterAll.filter(
-    (r) =>
-      wantBase(r.item_id) === wantBase(id) ||
+  let filtered = rosterAll.filter((r) => {
+    const rowBase = wantBase(r.item_id || r._itemId || r.item || "");
+    if (isDirectoryProceedingsCombined) {
+      return rowBase === "directory" || rowBase === "proceedings";
+    }
+    return (
+      rowBase === wantBase(id) ||
       (!r.item_id &&
         label &&
         String(r.item || "").toLowerCase().includes(String(label).toLowerCase()))
-  );
+    );
+  });
+
+  if (isDirectoryProceedingsCombined) {
+    filtered = combineDirectoryProceedingsRows(filtered);
+  }
 
   let EMAIL_COLUMNS = ["#", "date", "attendee", "attendee_title", "attendee_phone", "item", "qty", "notes"];
   let EMAIL_HEADER_LABELS = {
@@ -1991,6 +2080,51 @@ async function sendItemReportEmailInternal({
       notes: "Notes",
     };
   }
+
+  if (isDirectoryProceedingsCombined) {
+    EMAIL_COLUMNS = [
+      "#",
+      "date",
+      "directory",
+      "directory_qty",
+      "proceedings",
+      "proceedings_qty",
+      "attendee",
+      "attendee_title",
+      "attendee_phone",
+      "court",
+      "court_number",
+      "attendee_email",
+      "attendee_addr1",
+      "attendee_addr2",
+      "attendee_city",
+      "attendee_state",
+      "attendee_postal",
+      "attendee_country",
+      "notes",
+    ];
+    EMAIL_HEADER_LABELS = {
+      "#": "#",
+      date: "Date",
+      attendee: "Attendee",
+      attendee_title: "Title",
+      attendee_phone: "Phone",
+      court: "Court",
+      court_number: "Court #",
+      attendee_email: "Email",
+      attendee_addr1: "Address 1",
+      attendee_addr2: "Address 2",
+      attendee_city: "City",
+      attendee_state: "State",
+      attendee_postal: "Postal",
+      attendee_country: "Country",
+      directory: "Directory",
+      directory_qty: "Qty",
+      proceedings: "Proceedings",
+      proceedings_qty: "Qty",
+      notes: "Notes",
+    };
+  }
   if (isLoveGiftBase && !isCorsageBase) {
     EMAIL_COLUMNS = (EMAIL_COLUMNS || []).flatMap((c) =>
       c === "item" ? ["item_name", "item_price"] : [c]
@@ -2007,7 +2141,7 @@ async function sendItemReportEmailInternal({
     const cols = Array.isArray(EMAIL_COLUMNS) ? [...EMAIL_COLUMNS] : [];
     const insertAfterKey = "attendee_phone";
     const afterIdx = cols.indexOf(insertAfterKey);
-    const want = ["court", "court_number", "jurisdiction"];
+    const want = ["court", "court_number"];
     // Insert in a stable spot near attendee info
     for (let i = want.length - 1; i >= 0; i--) {
       const key = want[i];
@@ -2020,7 +2154,6 @@ async function sendItemReportEmailInternal({
       ...EMAIL_HEADER_LABELS,
       court: "Court",
       court_number: "Court #",
-        jurisdiction: "Jurisdiction",
     };
   }
 
@@ -2030,7 +2163,7 @@ async function sendItemReportEmailInternal({
     const cols = Array.isArray(EMAIL_COLUMNS) ? [...EMAIL_COLUMNS] : [];
     const insertAfterKey = "attendee_phone";
     const afterIdx = cols.indexOf(insertAfterKey);
-    const want = ["court", "court_number", "jurisdiction"];
+    const want = ["court", "court_number"];
     for (let i = want.length - 1; i >= 0; i--) {
       const key = want[i];
       if (cols.includes(key)) continue;
@@ -2042,7 +2175,6 @@ async function sendItemReportEmailInternal({
       ...EMAIL_HEADER_LABELS,
       court: "Court",
       court_number: "Court #",
-        jurisdiction: "Jurisdiction",
     };
   }
   // Corsage/Boutonniere: Wear Style is included in the Item text, so we do NOT add a separate column.
@@ -2128,11 +2260,18 @@ async function sendItemReportEmailInternal({
       baseRow.voting_status = deriveVotingStatus(r);
     }
 
-    const itemFields = isLoveGiftBase
-      ? { item_name: ip.item_name, item_price: ip.item_price }
-      : isBanquetKind
-        ? { item: bm.item, meal_type: bm.meal_type }
-        : { item: r.item };
+    const itemFields = isDirectoryProceedingsCombined
+      ? {
+          directory: r.directory || "",
+          directory_qty: r.directory_qty || "",
+          proceedings: r.proceedings || "",
+          proceedings_qty: r.proceedings_qty || "",
+        }
+      : isLoveGiftBase
+        ? { item_name: ip.item_name, item_price: ip.item_price }
+        : isBanquetKind
+          ? { item: bm.item, meal_type: bm.meal_type }
+          : { item: r.item };
 
     if (includeAddressForThisItem) {
       return {
@@ -2145,13 +2284,199 @@ async function sendItemReportEmailInternal({
         attendee_postal: r.attendee_postal,
         attendee_country: r.attendee_country,
         ...itemFields,
-        qty: r.qty,
+        ...(isDirectoryProceedingsCombined ? {} : { qty: r.qty }),
         notes: r.notes,
       };
     }
 
-    return { ...baseRow, ...itemFields, qty: r.qty, notes: r.notes };
+    return { ...baseRow, ...itemFields, ...(isDirectoryProceedingsCombined ? {} : { qty: r.qty }), notes: r.notes };
   });
+
+  if (isDirectoryProceedingsCombined) {
+    const colLetter = (n) => {
+      let s = "";
+      let x = Number(n || 0);
+      while (x > 0) {
+        const rem = (x - 1) % 26;
+        s = String.fromCharCode(65 + rem) + s;
+        x = Math.floor((x - 1) / 26);
+      }
+      return s || "A";
+    };
+
+    const dirQtyCol = colLetter((EMAIL_COLUMNS || []).indexOf("directory_qty") + 1);
+    const procQtyCol = colLetter((EMAIL_COLUMNS || []).indexOf("proceedings_qty") + 1);
+
+    if (dirQtyCol && procQtyCol && numbered.length > 0) {
+      // With spacerRows:true, each data row is followed by a blank row.
+      // Data occupies rows 2..(2*n), with blanks in between; the totals row is added after that.
+      const lastDataScanRow = numbered.length * 2;
+
+      const coerceDollarPrice = (obj) => {
+        if (!obj || typeof obj !== "object") return 0;
+        const candidates = [
+          obj.price,
+          obj.unitPrice,
+          obj.amount,
+          obj.cost,
+          obj.value,
+          obj.priceDollars,
+          obj.price_dollars,
+          obj.unit_price,
+          obj.price_cents,
+          obj.unitPriceCents,
+          obj.unit_price_cents,
+        ];
+        for (const raw of candidates) {
+          const n = Number(raw);
+          if (!Number.isFinite(n) || n <= 0) continue;
+          return n > 1000 ? Number((n / 100).toFixed(2)) : n;
+        }
+        return 0;
+      };
+
+      const configuredPriceFor = async (baseId, labelText) => {
+        const wantBase = baseKey(baseId);
+        const wantLabel = String(labelText || "").trim().toLowerCase();
+
+        try {
+          const addons = (await kvGetSafe("addons", [])) || [];
+          if (Array.isArray(addons)) {
+            const exact = addons.find((a) => {
+              const ids = [
+                a?.id,
+                a?.itemId,
+                a?.item_id,
+                a?.slotKey,
+                a?.slot,
+                a?.key,
+              ]
+                .map((v) => baseKey(v))
+                .filter(Boolean);
+              return ids.includes(wantBase);
+            });
+            const fuzzy = !exact
+              ? addons.find((a) => {
+                  const txt = [
+                    a?.name,
+                    a?.label,
+                    a?.title,
+                    a?.itemName,
+                    a?.item_name,
+                  ]
+                    .map((v) => String(v || "").toLowerCase())
+                    .join(" ");
+                  return wantLabel && txt.includes(wantLabel);
+                })
+              : null;
+
+            const picked = exact || fuzzy;
+            const fromAddons = coerceDollarPrice(picked);
+            if (fromAddons > 0) return fromAddons;
+          }
+        } catch {}
+
+        try {
+          const directCfg = await kvHgetallSafe(`itemcfg:${wantBase}`);
+          const fromDirect = coerceDollarPrice(directCfg);
+          if (fromDirect > 0) return fromDirect;
+        } catch {}
+
+        try {
+          const idx = (await kvSmembersSafe("itemcfg:index")) || [];
+          for (const rawId of idx) {
+            const rawBase = baseKey(rawId);
+            const rawText = String(rawId || "").toLowerCase();
+            if (rawBase !== wantBase && !(wantLabel && rawText.includes(wantLabel))) continue;
+            const cfg = await kvHgetallSafe(`itemcfg:${rawId}`);
+            const price = coerceDollarPrice(cfg);
+            if (price > 0) return price;
+          }
+        } catch {}
+
+        return 0;
+      };
+
+      const directoryPrice = await configuredPriceFor("directory", "directory");
+      const proceedingsPrice = await configuredPriceFor("proceedings", "proceedings");
+
+      numbered.push({
+        "#": "",
+        date: "",
+        directory: "TOTAL QTY",
+        directory_qty: { formula: `SUM(${dirQtyCol}2:${dirQtyCol}${lastDataScanRow})` },
+        proceedings: "TOTAL QTY",
+        proceedings_qty: { formula: `SUM(${procQtyCol}2:${procQtyCol}${lastDataScanRow})` },
+        attendee: "",
+        attendee_title: "",
+        attendee_phone: "",
+        court: "",
+        court_number: "",
+        attendee_email: "",
+        attendee_addr1: "",
+        attendee_addr2: "",
+        attendee_city: "",
+        attendee_state: "",
+        attendee_postal: "",
+        attendee_country: "",
+        notes: "",
+      });
+
+      numbered.push({
+        "#": "",
+        date: "",
+        directory: "TOTAL COST",
+        directory_qty: {
+          formula: `SUM(${dirQtyCol}2:${dirQtyCol}${lastDataScanRow})*${directoryPrice || 0}`,
+          numFmt: '$#,##0.00'
+        },
+        proceedings: "TOTAL COST",
+        proceedings_qty: {
+          formula: `SUM(${procQtyCol}2:${procQtyCol}${lastDataScanRow})*${proceedingsPrice || 0}`,
+          numFmt: '$#,##0.00'
+        },
+        attendee: "",
+        attendee_title: "",
+        attendee_phone: "",
+        court: "",
+        court_number: "",
+        attendee_email: "",
+        attendee_addr1: "",
+        attendee_addr2: "",
+        attendee_city: "",
+        attendee_state: "",
+        attendee_postal: "",
+        attendee_country: "",
+        notes: "",
+      });
+
+      numbered.push({
+        "#": "",
+        date: "",
+        directory: "COMBINED COST",
+        directory_qty: {
+          formula: `(SUM(${dirQtyCol}2:${dirQtyCol}${lastDataScanRow})*${directoryPrice || 0})+(SUM(${procQtyCol}2:${procQtyCol}${lastDataScanRow})*${proceedingsPrice || 0})`,
+          numFmt: '$#,##0.00'
+        },
+        proceedings: "",
+        proceedings_qty: "",
+        attendee: "",
+        attendee_title: "",
+        attendee_phone: "",
+        court: "",
+        court_number: "",
+        attendee_email: "",
+        attendee_addr1: "",
+        attendee_addr2: "",
+        attendee_city: "",
+        attendee_state: "",
+        attendee_postal: "",
+        attendee_country: "",
+        notes: "",
+      });
+    }
+  }
+
 
     // ✅ XLSX ATTACHMENT (always attach for chair reports)
   // FIX: Always generate a valid workbook. If there are no rows, Excel will still contain the header row.
@@ -2181,9 +2506,11 @@ async function sendItemReportEmailInternal({
 
 const today = new Date();
   const dateStr = today.toISOString().slice(0, 10);
-  const baseNameRaw = label || id || "report";
+  const reportLabel = isDirectoryProceedingsCombined ? "Directory & Proceedings" : (label || id || "report");
+  const reportIdForFile = isDirectoryProceedingsCombined ? "directory_proceedings" : (id || "item");
+  const baseNameRaw = reportLabel;
   const baseName = baseNameRaw.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "");
-  const filename = `Report_${id || "item"}_${scope || "current"}.xlsx`;
+  const filename = `Report_${reportIdForFile}_${scope || "current"}.xlsx`;
 
   const toListPref = await getChairEmailsForItemId(id);
   const { effective } = await getEffectiveSettings();
@@ -2248,7 +2575,7 @@ const today = new Date();
 
   const coverageText = formatCoverageRange({ startMs, endMs, rows: sorted });
 
-  const subject = `Report — ${prettyKind}: ${label || id}`;
+  const subject = `Report — ${prettyKind}: ${reportLabel}`;
   const emailSubject = `${(subjectPrefix || "").toString()}${subject}`;
   const tablePreview = `
     <div style="font-family:system-ui,Segoe UI,Arial,sans-serif">
@@ -2454,14 +2781,13 @@ async function emailWeeklyReceiptsZip({ mode = "test" } = {}) {
 
   const orders = await loadAllOrdersWithRetry();
   const wantMode = String(mode || "test").toLowerCase();
+  const _now = Date.now();
+  // Weekly ZIP should cover the *previous completed* Mon→Sun week (UTC),
+  // since the cron runs Monday morning.
+  const _prevWeekNow = _now - 7 * 24 * 60 * 60 * 1000;
+  const weekKey = weekKeyUTC(_prevWeekNow);
+  const { startMs, endMs } = weekRangeUTC(_prevWeekNow);
 
-  // Weekly ZIP runs on a cron (often Monday). We want the *previous completed* week:
-  // Monday 00:00 UTC → next Monday 00:00 UTC, shifted back by 7 days.
-  const now = Date.now();
-  const weekKey = weekKeyUTC(now - 7 * 86400000);
-  const { startMs: thisWeekStart, endMs: thisWeekEnd } = weekRangeUTC(now);
-  const startMs = thisWeekStart - 7 * 86400000;
-  const endMs = thisWeekEnd - 7 * 86400000;
   // ✅ LIVE/LIVE_TEST: only send once per month (even if cron runs daily)
   // TEST: allowed to send repeatedly (useful while testing)
   const enforceMonthlyOnce = wantMode === "live" || wantMode === "live_test";
@@ -2470,7 +2796,7 @@ async function emailWeeklyReceiptsZip({ mode = "test" } = {}) {
   if (enforceMonthlyOnce) {
     const already = await kvGetSafe(sentKey, null);
     if (already) {
-      return { ok: true, skipped: true, month: weekKey, week: weekKey, mode: wantMode, reason: "already-sent" };
+      return { ok: true, skipped: true, month: weekKey, mode: wantMode, reason: "already-sent" };
     }
   }
 
@@ -2535,7 +2861,7 @@ async function emailWeeklyReceiptsZip({ mode = "test" } = {}) {
       });
     }
 
-    return { ok: true, month: weekKey, week: weekKey, mode: wantMode };
+    return { ok: true, month: weekKey, mode: wantMode };
   }
 
   return { ok: false, error: retry.error?.message || String(retry.error) };
