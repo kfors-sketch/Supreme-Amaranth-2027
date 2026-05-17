@@ -698,7 +698,7 @@ const fee = feeCents / 100;
         <div style="font-size:1.1em"><strong>Total (charged at checkout)</strong>: ${money(total)}</div>
         <p class="tiny" style="margin:.25rem 0 0;">
           The processing fees above are calculated on your entire order
-          (banquets, Grand Court add-ons, merchandise, and shipping &amp; handling)
+          (banquets, Supreme Council add-ons, merchandise, and shipping &amp; handling)
           and will be shown as separate line items on the secure Stripe checkout page.
           For cards issued outside the United States, the international card processing fee
           (if shown above) is also added as a separate line at checkout.
