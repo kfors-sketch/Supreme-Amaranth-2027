@@ -51,7 +51,8 @@ async function emailWeeklyReceiptsZip({ mode = "test" } = {}) {
   const zipBuf = await zip.generateAsync({ type: "nodebuffer" });
   const zipB64 = Buffer.from(zipBuf).toString("base64");
 
-  const from = RESEND_FROM || "pa_sessions@yahoo.com";
+  if (!RESEND_FROM) throw new Error("RESEND_FROM missing");
+  const from = RESEND_FROM;
   const subject = `Weekly Receipts ZIP — ${weekKey} (${wantMode})`;
 
   const payload = {

@@ -1,5 +1,7 @@
 import { kvGetSafe, kvSmembersSafe } from "./kv.js";
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 let _ordersCache = null;
 
 // When admin tools patch stored orders, the warm lambda may still hold a cached

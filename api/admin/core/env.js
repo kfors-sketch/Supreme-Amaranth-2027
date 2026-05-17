@@ -7,7 +7,7 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 const RESEND_FROM = (process.env.RESEND_FROM || "").trim();
 const REPLY_TO = (process.env.REPLY_TO || process.env.REPORTS_REPLY_TO || "").trim();
 const REPORTS_LOG_TO = (process.env.REPORTS_LOG_TO || "").trim();
-const CONTACT_TO = (process.env.CONTACT_TO || "pa_sessions@yahoo.com").trim();
+const CONTACT_TO = (process.env.CONTACT_TO || "").trim();
 
 // Backup receipts inbox (XLSX copy of each receipt)
 const EMAIL_RECEIPTS = (process.env.EMAIL_RECEIPTS || "").trim();

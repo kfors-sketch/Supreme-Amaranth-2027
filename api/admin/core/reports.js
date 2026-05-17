@@ -1,13 +1,45 @@
 import ExcelJS from "exceljs";
-import JSZip from "jszip";
-import { resend, RESEND_FROM, REPLY_TO, REPORTS_LOG_TO } from "./env.js";
+import { resend, RESEND_FROM, REPLY_TO, REPORTS_LOG_TO, getEffectiveSettings } from "./env.js";
 import { sendWithRetry } from "./retry.js";
 import { objectsToXlsxBuffer } from "./xlsx.js";
 import { flattenOrderToRows } from "./orders-flatten.js";
 import { loadAllOrdersWithRetry } from "./orders-load.js";
 import { getChairEmailsForItemId } from "./chair-emails.js";
+import {
+  parseDateISO,
+  parseYMD,
+  baseKey,
+  sortByDateAsc,
+  recordMailLog,
+  formatCoverageRange,
+} from "./reporting.js";
 
 // REPORT EMAIL STAGGERING (scheduled_at)
+// Keeps reports spaced out for Yahoo recipients within one function invocation.
+let _REPORT_STAGGER = {
+  baseMs: 0,
+  idx: 0,
+  lastTouchedMs: 0,
+};
+
+function nextReportScheduledAtIso({ allow, hasYahoo, explicitIso }) {
+  if (!allow || !hasYahoo) return "";
+  if (explicitIso) return explicitIso;
+
+  const now = Date.now();
+  if (!_REPORT_STAGGER.baseMs || now - (_REPORT_STAGGER.lastTouchedMs || 0) > 5 * 60_000) {
+    _REPORT_STAGGER.baseMs = now;
+    _REPORT_STAGGER.idx = 0;
+  }
+  _REPORT_STAGGER.lastTouchedMs = now;
+
+  const idx = _REPORT_STAGGER.idx++;
+  if (idx <= 0) return "";
+
+  const t = _REPORT_STAGGER.baseMs + idx * 60_000;
+  if (t <= now + 30_000) return "";
+  return new Date(t).toISOString();
+}
 
 function collectAttendeesFromOrders(
   orders,
@@ -88,7 +120,8 @@ async function sendItemReportEmailInternal({
   if (!resend) return { ok: false, error: "resend-not-configured" };
   if (!kind || !id) return { ok: false, error: "missing-kind-or-id" };
 
-  const from = RESEND_FROM || "pa_sessions@yahoo.com";
+  if (!RESEND_FROM) throw new Error("RESEND_FROM missing");
+  const from = RESEND_FROM;
 
   // we still accept it, but we won't pass scheduled_at when attachments are present
   let scheduledAtIso = (scheduled_at || scheduledAt || "").trim();

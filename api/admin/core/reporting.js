@@ -138,4 +138,5 @@ export {
   applyItemFilters,
   MAIL_LOG_KEY,
   recordMailLog,
+  formatCoverageRange,
 };

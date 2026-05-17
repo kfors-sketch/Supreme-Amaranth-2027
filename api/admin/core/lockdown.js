@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { kvGetSafe } from "./kv.js";
+
 import { getEffectiveSettings } from "./env.js";
 
 function getClientIp(req) {

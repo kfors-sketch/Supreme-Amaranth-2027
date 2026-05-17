@@ -260,7 +260,7 @@ function renderOrderEmailHTML(order) {
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
       <img src="${absoluteUrl("/assets/img/receipt_logo.svg")}" alt="Logo" style="height:28px;max-width:160px;object-fit:contain" />
       <div>
-        <div style="font-size:18px;font-weight:800">Grand Court of PA — Order of the Amaranth</div>
+        <div style="font-size:18px;font-weight:800">Supreme Council — Order of the Amaranth</div>
         <div style="font-size:14px;color:#555">Order #${order.id}</div>
       </div>
     </div>

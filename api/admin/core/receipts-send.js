@@ -16,7 +16,8 @@ async function sendOrderReceipts(order, { adminEmail } = {}) {
 
   if (!to.length && !bcc.length) return { ok: false, error: "no-recipient" };
 
-  const from = RESEND_FROM || "pa_sessions@yahoo.com";
+  if (!RESEND_FROM) throw new Error("RESEND_FROM missing");
+  const from = RESEND_FROM;
   const subject = `Receipt — Order ${order?.id || ""}`.trim();
   const html = renderOrderEmailHTML(order);
 

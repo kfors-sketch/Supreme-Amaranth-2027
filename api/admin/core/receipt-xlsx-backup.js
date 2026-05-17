@@ -36,7 +36,8 @@ async function sendReceiptXlsxBackup(order) {
     </div>
   `;
 
-  const from = RESEND_FROM || "pa_sessions@yahoo.com";
+  if (!RESEND_FROM) throw new Error("RESEND_FROM missing");
+  const from = RESEND_FROM;
 
   const payload = {
     from,
