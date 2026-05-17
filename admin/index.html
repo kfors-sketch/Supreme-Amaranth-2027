@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Amaranth Admin — Hub</title>
+  <script>
+     window.SITE_ADMIN_NAME = "Supreme Council Admin";
+     document.title = `${window.SITE_ADMIN_NAME} — Hub`;
+  </script>
   <meta name="robots" content="noindex, nofollow" />
   <link rel="stylesheet" href="/assets/css/styles.css">
   <style>
@@ -44,7 +47,10 @@
 </head>
 <body>
   <main class="container">
-    <header>
+    <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:#6b7280">
+       Supreme Council Admin
+    </div>
+	<header>
       <div>
         <h1>Admin Hub</h1>
         <div id="maintPill" class="pill" style="display:none">Maintenance</div>

@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Add-Ons Manager — Amaranth</title>
+  <script>
+     window.SITE_ADMIN_NAME = "Supreme Council Admin";
+     document.title = `${window.SITE_ADMIN_NAME} — Add-Ons Manager`;
+  </script>
   <meta name="robots" content="noindex, nofollow" />
   <link rel="stylesheet" href="/assets/css/styles.css" />
   <style>
@@ -43,7 +46,10 @@
 </head>
 <body>
   <main class="container">
-    <header style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:#6b7280">
+          Supreme Council Admin
+      </div>
+	  <header style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div>
         <h1>Add-Ons Manager</h1>
         <div class="muted">Create, edit, or retire registration add-ons (directories, pre-reg, love gifts, etc.)</div>
@@ -209,7 +215,7 @@
   <script>window.AMARANTH_REGISTER_ENDPOINT = "/api/router?action=register_item";</script>
   <!-- Slot keys helper for YoY grouping -->
   <script src="/assets/js/admin-slotkeys.js"></script>
-  <script src="/assets/js/grand-court-addons.js"></script>
+  <script src="/assets/js/supreme-addons.js"></script>
 
   <!-- Admin shared helpers -->
   <script src="/assets/js/admin.js"></script>
@@ -489,7 +495,7 @@
     const listMsgEl = document.getElementById('listMsg');
 
     if (!loaded) {
-      const src = Array.isArray(window.GRAND_COURT_ADDONS) ? window.GRAND_COURT_ADDONS : [];
+      const src = Array.isArray(window.SUPREME_ADDONS) ? window.SUPREME_ADDONS : [];
       modelAll = normalizeAll(JSON.parse(JSON.stringify(src)));
       if (listMsgEl) listMsgEl.textContent = 'Using static list (fallback).';
     } else {
@@ -518,7 +524,7 @@
       }
     }catch(err){ console.warn('Refresh server error:', err); }
     if(!loaded){
-      const src = Array.isArray(window.GRAND_COURT_ADDONS) ? window.GRAND_COURT_ADDONS : [];
+      const src = Array.isArray(window.SUPREME_ADDONS) ? window.SUPREME_ADDONS : [];
       modelAll = normalizeAll(JSON.parse(JSON.stringify(src)));
       if (listMsgEl) listMsgEl.textContent = 'Server empty/unavailable — using fallback.';
     }
