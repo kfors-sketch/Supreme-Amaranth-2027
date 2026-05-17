@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Amaranth Admin — Debug Tools</title>
+  <script>
+     window.SITE_ADMIN_NAME = "Supreme Council Admin";
+     document.title = `${window.SITE_ADMIN_NAME} — Debug Tools`;
+  </script>
   <meta name="robots" content="noindex, nofollow" />
   <link rel="stylesheet" href="/assets/css/styles.css" />
   <style>
@@ -178,7 +181,7 @@
         <h3>Auth / Context</h3>
         <p id="authStatus">Checking admin token…</p>
         <p class="token-warning" id="tokenWarning" style="display:none;">
-          No admin token found. Please log in via <a href="/admin/login.html" class="admin-link">Admin Login</a> first.
+          No admin token found. Please log in via <a href="/admin/reporting_login.html" class="admin-link">Admin Login</a> first.
         </p>
       </div>
 
