@@ -276,7 +276,7 @@
       <div class="controls mt-4">
         <div class="group" style="max-width:320px">
           <label class="muted">Send to</label>
-          <input id="testReportTo" type="email" value="kfors@verizon.net" />
+          <input id="testReportTo" type="email" value="" />
         </div>
 
         <div class="group" style="max-width:220px">
@@ -1425,6 +1425,17 @@ $('#refundModal').style.display='none';
 
         const weekday=String(j.effective?.REPORT_WEEKDAY||'1');
         $('#reportWeekday').value=weekday;
+
+        const reportTo =
+          j?.effective?.REPORTS_LOG_TO ||
+          j?.REPORTS_LOG_TO ||
+          '';
+
+        const testInput = document.getElementById('testReportTo');
+        if (testInput && !testInput.value) {
+          testInput.value = reportTo;
+        }
+
         statusEl.textContent='';
         helpEl.textContent=`Weekly reports will be sent every ${$('#reportWeekday').selectedOptions[0].textContent}.`;
       }catch{
@@ -1464,7 +1475,7 @@ $('#refundModal').style.display='none';
 
       try {
         const payload = {
-          to: ($('#testReportTo')?.value || 'kfors@verizon.net').trim(),
+          to: ($('#testReportTo')?.value || '').trim(),
           frequency: ($('#testReportFreq')?.value || 'monthly').trim(),
           scope: ($('#testReportScope')?.value || 'current-month').trim(),
           previewOnly: !!$('#testPreviewOnly')?.checked,
