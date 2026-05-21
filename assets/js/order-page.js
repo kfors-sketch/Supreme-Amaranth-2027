@@ -893,6 +893,11 @@ const fee = feeCents / 100;
 
       const purchaser = readPurchaser();
 
+      const currentCart = Cart.get() || { lines: [] };
+      if (!Array.isArray(currentCart.lines) || currentCart.lines.length === 0) {
+        throw new Error("Your cart is empty.");
+      }
+
       // Strict client-side validation to match required fields
       const missing = [];
       if (!purchaser.name) missing.push("Full name");

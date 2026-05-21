@@ -423,8 +423,10 @@ if (typeof window !== "undefined") {
 
     const { qty, amount, attendee, variant, notes, wear, transportation } = options || {};
 
-    const attendeeId = attendee && attendee.id ? String(attendee.id) : "";
     const transport = isTransportation(addon);
+    // Transportation is intentionally purchaser-level/standalone.
+    // It should not require or attach to an attendee record.
+    const attendeeId = transport ? "(unassigned)" : (attendee && attendee.id ? String(attendee.id) : "");
     const onePerAttendee =
       addon && addon.type ? !["amount", "variantQty", "qty", "transportation"].includes(String(addon.type)) : true;
 
@@ -799,25 +801,34 @@ amtWrap.appendChild(amtLabel);
       }
     };
 
-    attendeeSelect.addEventListener("change", refreshAddBtnState);
+    if (!isTransportation(addon)) {
+      attendeeSelect.addEventListener("change", refreshAddBtnState);
+    }
     setTimeout(refreshAddBtnState, 0);
 
     // assemble row
-    row.appendChild(attendeeWrap);
+    // Transportation is standalone: passenger/contact fields inside the Transportation
+    // form are the source of truth, so no attendee selector is needed.
+    if (!isTransportation(addon)) {
+      row.appendChild(attendeeWrap);
+    }
     card.appendChild(title);
     if (addon.description) card.appendChild(desc);
     card.appendChild(row);
     card.appendChild(btnWrap);
 
-    // Initial attendee options
-    buildAttendeeOptions(getAttendees(), attendeeSelect);
+    // Initial attendee options (normal add-ons only)
+    if (!isTransportation(addon)) {
+      buildAttendeeOptions(getAttendees(), attendeeSelect);
+    }
 
     // Click handler
     addBtn.addEventListener("click", () => {
-      const attKey = attendeeSelect.value || "";
+      const isTransport = isTransportation(addon);
+      const attKey = isTransport ? "" : (attendeeSelect.value || "");
       const attendee = attKey ? findAttendeeByKey(attKey) : null;
 
-      if (!attendee) {
+      if (!isTransport && !attendee) {
         alert("Please add an attendee above and select them for this add-on.");
         return;
       }
