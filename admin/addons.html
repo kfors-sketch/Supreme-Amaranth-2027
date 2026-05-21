@@ -1043,5 +1043,42 @@
 
   loadInitial();
   </script>
+
+  <script>
+  // Transportation admin visibility safety hook
+  // This makes the Transportation Settings box appear whenever Type = transportation,
+  // even if another script runs late or the page was cached oddly.
+  (function(){
+    function updateTransportationBox(){
+      var typeEl = document.getElementById('f_type');
+      var box = document.getElementById('row_transportation');
+      var price = document.getElementById('row_price');
+      var variants = document.getElementById('row_variants');
+      if (!typeEl || !box) return;
+
+      if (typeEl.value === 'transportation') {
+        box.style.display = '';
+        if (price) price.style.display = 'none';
+        if (variants) variants.style.display = 'none';
+      } else {
+        box.style.display = 'none';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      var typeEl = document.getElementById('f_type');
+      if (typeEl) {
+        typeEl.addEventListener('change', updateTransportationBox);
+        typeEl.addEventListener('input', updateTransportationBox);
+      }
+      setTimeout(updateTransportationBox, 0);
+      setTimeout(updateTransportationBox, 250);
+      setTimeout(updateTransportationBox, 1000);
+    });
+
+    window.forceTransportationAdminRefresh = updateTransportationBox;
+  })();
+  </script>
+
 </body>
 </html>
