@@ -185,6 +185,12 @@ function normalizeLineMeta(line){
     m.itemNote = _normStr(note);
   }
 
+  // ---- Transportation: keep structured details intact and mark category ----
+  if (m.transportation && typeof m.transportation === "object") {
+    m.category = "transportation";
+    m.itemType = m.itemType || "transportation";
+  }
+
   return line;
 }
 
@@ -201,6 +207,12 @@ function lineMetaSignature(line){
     return JSON.stringify({
       note: _normStr(m.itemNote)
     });
+  }
+  if (m.transportation && typeof m.transportation === "object") {
+    // Transportation forms can contain different passengers/flights under the
+    // same add-on item. Include the structured data in the merge signature so
+    // separate transportation requests do not collapse into one cart line.
+    return JSON.stringify({ transportation: m.transportation });
   }
   return "";
 }

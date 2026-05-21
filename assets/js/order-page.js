@@ -197,6 +197,50 @@ function isCorsageCustom(meta){
   const c = resolveCorsageChoice(meta).toLowerCase();
   return !!(meta && meta.corsageIsCustom) || c.includes("custom") || c === "c" || c === "other" || c === "special";
 }
+
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c] || c));
+}
+
+function resolveTransportation(meta){
+  const m = meta || {};
+  const t = m.transportation && typeof m.transportation === "object" ? m.transportation : null;
+  if (!t) return null;
+  return t;
+}
+
+function formatTransportPassengers(passengers){
+  const arr = Array.isArray(passengers) ? passengers : [];
+  if (!arr.length) return "";
+  return arr.map((p, i) => {
+    const bits = [p?.name, p?.phone, p?.email].map(x => String(x || "").trim()).filter(Boolean);
+    return `Passenger ${i + 1}: ${escapeHtml(bits.join(" • "))}`;
+  }).join("<br>");
+}
+
+function formatTransportLeg(label, leg){
+  if (!leg || !leg.needed) return `${label}: No`;
+  const bits = [
+    leg.airport ? `Airport: ${leg.airport}` : "",
+    leg.airline ? `Airline: ${leg.airline}` : "",
+    leg.flight ? `Flight: ${leg.flight}` : "",
+    leg.datetime ? `Time: ${leg.datetime}` : "",
+    leg.notes ? `Notes: ${leg.notes}` : "",
+  ].filter(Boolean).map(escapeHtml);
+  return `${label}: Yes${bits.length ? "<br>" + bits.join("<br>") : ""}`;
+}
+
+function transportationDetailHtml(meta){
+  const t = resolveTransportation(meta);
+  if (!t) return "";
+  const parts = [];
+  const passengers = formatTransportPassengers(t.passengers);
+  if (passengers) parts.push(`<strong>Passengers</strong><br>${passengers}`);
+  parts.push(formatTransportLeg("Pickup", t.pickup));
+  parts.push(formatTransportLeg("Drop-off", t.dropoff));
+  if (t.paymentMode) parts.push(`Payment mode: ${escapeHtml(t.paymentMode)}`);
+  return `<div class="tiny" style="opacity:.9;margin-top:4px;line-height:1.35;">${parts.join("<br>")}</div>`;
+}
 // ================================================================
 
   // ===== shared attendee storage key (same as other pages) =====
@@ -304,6 +348,7 @@ function isCorsageCustom(meta){
           const banquetNotes = isBanquet ? lnMeta || lnAtt : "";
 
                     const itemNote = !isBanquet ? resolveItemNote(l.meta) : "";
+          const transportDetail = !isBanquet ? transportationDetailHtml(l.meta) : "";
 
           const isPreReg = /pre\s*reg/i.test(String(l.itemName||"")) || /pre[\s_-]*reg/i.test(String(l.itemId||""));
           const memberLabelForLine = (attObj?.memberType === "voting") ? "Voting" : ((attObj?.memberType === "non_voting") ? "Non-Voting" : "");
@@ -311,7 +356,7 @@ function isCorsageCustom(meta){
             ? `<div class="tiny" style="opacity:.85;">Member: ${memberLabelForLine}</div>`
             : "";
 
-          const detail = memberLine + (banquetNotes
+          const detail = memberLine + transportDetail + (banquetNotes
             ? `<div class="tiny" style="opacity:.85;">Notes: ${banquetNotes.replace(
                 /</g,
                 "&lt;"
