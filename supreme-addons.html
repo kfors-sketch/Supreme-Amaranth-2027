@@ -139,6 +139,11 @@
     .addon label{display:flex;flex-direction:column;gap:6px}
     .addon input,.addon select{padding:.55rem .7rem;border:1px solid #d1d5db;border-radius:.5rem;background:rgba(255,255,255,0.9)}
     .grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .transportation-box .transport-passenger label{display:flex;flex-direction:column;gap:6px}
+    @media (max-width: 760px){
+      .grid-3{grid-template-columns:1fr}
+      .transportation-box .transport-passenger{grid-template-columns:1fr !important}
+    }
   </style>
 
   <!-- Core site scripts (order matters) -->
@@ -148,7 +153,7 @@
   <script src="assets/js/cart.js"></script>
   <script src="assets/js/data-store.js"></script>
   <script src="assets/js/site-boot.js"></script>
-  <script src="assets/js/grand-court-addons.js"></script>
+  <script src="assets/js/supreme-addons.js?v=transportation-v1"></script>
 
   <!-- =========================================================
        SORT ORDER SUPPORT (public add-ons)
