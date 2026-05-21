@@ -70,7 +70,7 @@ import {
 } from "./admin/core.js";
 
 import { getReportingPrefs, setReportingPrefs, resolveChannel, shouldSendReceiptZip } from "./admin/report-channel.js";
-import { buildTransportationMetadata } from "./admin/transportation.js";
+import { storeTransportationPayload } from "./admin/transportation.js";
 
 
 import {
@@ -2664,7 +2664,7 @@ if (req.method === "GET") {
             const fees = body.fees || { pct: 0, flat: 0 };
             const purchaser = body.purchaser || {};
 
-            const line_items = lines.map((l) => {
+            const line_items = await Promise.all(lines.map(async (l) => {
               const priceMode = String(l.priceMode || "").toLowerCase();
               const isBundle =
                 priceMode === "bundle" && (l.bundleTotalCents ?? null) != null;
@@ -2859,8 +2859,9 @@ if (isPreReg && !votingLabel) {
 } catch {}
 
 
-              const transportationMetadata = buildTransportationMetadata(
-                l?.meta?.transportation || l?.transportation || null
+              const transportationMetadata = await storeTransportationPayload(
+                l?.meta?.transportation || l?.transportation || null,
+                { itemId: l.itemId || "", itemName: l.itemName || "", itemType: l.itemType || "" }
               );
 
               return {
@@ -2982,7 +2983,7 @@ corsageNote:
                   },
                 },
               };
-            });
+            }));
 
             const pct = Number(fees.pct || 0);
             const flatCents = toCentsAuto(fees.flat || 0);
