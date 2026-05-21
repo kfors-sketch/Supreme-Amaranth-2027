@@ -70,6 +70,7 @@ import {
 } from "./admin/core.js";
 
 import { getReportingPrefs, setReportingPrefs, resolveChannel, shouldSendReceiptZip } from "./admin/report-channel.js";
+import { buildTransportationMetadata } from "./admin/transportation.js";
 
 
 import {
@@ -2369,7 +2370,7 @@ if (req.method === "GET") {
         const payload = {
           from: RESEND_FROM || "onboarding@resend.dev",
           to: [to],
-          subject: "Amaranth test email",
+          subject: "Supreme Council test email",
           html,
           reply_to: REPLY_TO || undefined,
         };
@@ -2436,7 +2437,7 @@ if (req.method === "GET") {
 
         const topicMap = {
           banquets: "Banquets / meal choices",
-          addons: "Grand Court add-ons (directory, love gifts, etc.)",
+          addons: "Supreme Council add-ons (directory, love gifts, etc.)",
           catalog: "Product catalog / merchandise items",
           order: "Order / checkout issues",
           website: "Website or technical problem",
@@ -2445,7 +2446,7 @@ if (req.method === "GET") {
         const pageMap = {
           home: "Home",
           banquet: "Banquets page",
-          addons: "Grand Court Add-Ons page",
+          addons: "Supreme Council Add-Ons page",
           catalog: "Product Catalog page",
           order: "Order page",
         };
@@ -2858,6 +2859,10 @@ if (isPreReg && !votingLabel) {
 } catch {}
 
 
+              const transportationMetadata = buildTransportationMetadata(
+                l?.meta?.transportation || l?.transportation || null
+              );
+
               return {
                 quantity,
                 price_data: {
@@ -2972,6 +2977,7 @@ corsageNote:
                       bundleQty: isBundle ? String(l.bundleQty || "") : "",
                       bundleTotalCents: isBundle ? String(unit_amount) : "",
                       loveGiftAmountCents: String(unit_amount),
+                      ...transportationMetadata,
                     },
                   },
                 },
@@ -3591,7 +3597,15 @@ function normalizeCountryCode2(raw) {
         if (!(await requireAdminAuth(req, res))) return;
 
         const body = await readJsonBody(req);
-        const to = String(body?.to || "kfors@verizon.net").trim();
+        const { effective } = await getEffectiveSettings();
+        const to = String(
+          body?.to ||
+          effective?.TEST_REPORT_TO ||
+          process.env.TEST_REPORT_TO ||
+          effective?.REPORTS_LOG_TO ||
+          REPORTS_LOG_TO ||
+          ""
+        ).trim();
         const frequency = String(body?.frequency || "monthly").trim().toLowerCase();
         const scope = String(body?.scope || "current-month").trim();
         const previewOnly = !!body?.previewOnly;
