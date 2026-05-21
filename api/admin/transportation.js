@@ -1,3 +1,5 @@
+import { kv } from "@vercel/kv";
+import crypto from "crypto";
 // /api/admin/transportation.js
 // Transportation report helpers kept separate so router.js/core.js do not grow.
 
@@ -158,4 +160,69 @@ export function transportationRowFields(t) {
     transportation_payment_mode: t.paymentMode || "",
     transportation_payment_basis: t.paymentBasis || "",
   };
+}
+
+
+// -----------------------------------------------------------------------------
+// Stripe-safe transportation storage
+// -----------------------------------------------------------------------------
+// Full passenger/flight data can exceed Stripe metadata limits. We store the full
+// object in KV before checkout and send only this short reference through Stripe.
+const TRANSPORT_REF_PREFIX = "transport:";
+
+function makeTransportRef() {
+  return "tr_" + crypto.randomBytes(12).toString("hex");
+}
+
+export async function storeTransportationPayload(transportation, context = {}) {
+  if (!transportation || typeof transportation !== "object") return {};
+
+  const ref = makeTransportRef();
+  const payload = {
+    ref,
+    createdAt: new Date().toISOString(),
+    context: context && typeof context === "object" ? context : {},
+    transportation,
+  };
+
+  await kv.set(TRANSPORT_REF_PREFIX + ref, payload);
+
+  return {
+    category: "transportation",
+    transportationRef: ref,
+    passengerCount: String(transportation.passengerCount || transportation.passengers?.length || 0),
+    pickupNeeded: transportation?.pickup?.needed ? "true" : "false",
+    dropoffNeeded: transportation?.dropoff?.needed ? "true" : "false",
+    paymentMode: cleanString(transportation.paymentMode || ""),
+    paymentBasis: cleanString(transportation.paymentBasis || ""),
+  };
+}
+
+export async function loadTransportationPayload(ref) {
+  const key = String(ref || "").trim();
+  if (!key) return null;
+  try {
+    const stored = await kv.get(TRANSPORT_REF_PREFIX + key);
+    if (!stored || typeof stored !== "object") return null;
+    const obj = stored.transportation && typeof stored.transportation === "object"
+      ? stored.transportation
+      : null;
+    return obj ? normalizeTransportation(obj, { transportationRef: key }) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function hydrateTransportationLines(lines) {
+  if (!Array.isArray(lines) || !lines.length) return lines || [];
+  for (const line of lines) {
+    const meta = line && line.meta && typeof line.meta === "object" ? line.meta : {};
+    const ref = meta.transportationRef || meta.transportation_ref || "";
+    if (!ref) continue;
+    const full = await loadTransportationPayload(ref);
+    if (full) {
+      line.meta = { ...meta, transportation: full, transportationRef: ref };
+    }
+  }
+  return lines;
 }

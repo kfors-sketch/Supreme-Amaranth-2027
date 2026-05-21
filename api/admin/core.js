@@ -4,7 +4,7 @@ import { kv } from "@vercel/kv";
 import { Resend } from "resend";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
-import { extractTransportationFromMeta, isTransportationMeta, transportationNotes, transportationRowFields } from "./transportation.js";
+import { extractTransportationFromMeta, hydrateTransportationLines, isTransportationMeta, transportationNotes, transportationRowFields } from "./transportation.js";
 
 // ============================================================================
 // REPORT EMAIL STAGGERING (scheduled_at)
@@ -828,6 +828,9 @@ async function saveOrderFromSession(sessionLike, extra = {}) {
       notes: "",
     };
   });
+
+  // Restore full transportation JSON from KV when Stripe only carried a short ref.
+  await hydrateTransportationLines(lines);
 
   // ---------------------------------------------------------------------------
   // Attendee name normalization (prevents duplicate attendee boxes on Order page)
