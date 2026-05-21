@@ -4,6 +4,7 @@ import { kv } from "@vercel/kv";
 import { Resend } from "resend";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
+import { extractTransportationFromMeta, isTransportationMeta, transportationNotes, transportationRowFields } from "./transportation.js";
 
 // ============================================================================
 // REPORT EMAIL STAGGERING (scheduled_at)
@@ -202,7 +203,8 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 const RESEND_FROM = (process.env.RESEND_FROM || "").trim();
 const REPLY_TO = (process.env.REPLY_TO || process.env.REPORTS_REPLY_TO || "").trim();
 const REPORTS_LOG_TO = (process.env.REPORTS_LOG_TO || "").trim();
-const CONTACT_TO = (process.env.CONTACT_TO || "pa_sessions@yahoo.com").trim();
+const CONTACT_TO =
+  (process.env.CONTACT_TO || "supreme_sessions_contact@yahoo.com").trim();
 
 // Backup receipts inbox (XLSX copy of each receipt)
 const EMAIL_RECEIPTS = (process.env.EMAIL_RECEIPTS || "").trim();
@@ -751,7 +753,7 @@ async function saveOrderFromSession(sessionLike, extra = {}) {
       qty,
       unitPrice: unit,
       gross: total,
-      category: (meta.itemType || "").toLowerCase() || "other",
+      category: (meta.category || meta.itemType || "").toLowerCase() || "other",
 
       attendeeId: meta.attendeeId || meta.attendee_id || "",
       attendeeName: meta.attendeeName || meta.attendee_name || "",
@@ -808,6 +810,20 @@ async function saveOrderFromSession(sessionLike, extra = {}) {
         bundleQty: meta.bundleQty || "",
         bundleTotalCents: meta.bundleTotalCents || "",
         itemType: meta.itemType || "",
+        category: meta.category || "",
+        passengerCount: meta.passengerCount || "",
+        pickupNeeded: meta.pickupNeeded || "",
+        dropoffNeeded: meta.dropoffNeeded || "",
+        paymentMode: meta.paymentMode || "",
+        paymentBasis: meta.paymentBasis || "",
+        transportJson1: meta.transportJson1 || "",
+        transportJson2: meta.transportJson2 || "",
+        transportJson3: meta.transportJson3 || "",
+        transportJson4: meta.transportJson4 || "",
+        transportJson5: meta.transportJson5 || "",
+        transportJson6: meta.transportJson6 || "",
+        transportJson7: meta.transportJson7 || "",
+        transportJson8: meta.transportJson8 || "",
       },
       notes: "",
     };
@@ -934,6 +950,8 @@ function flattenOrderToRows(o) {
     const net = li.gross;
     const rawId = li.itemId || "";
     const base = baseKey(rawId);
+    const transport = extractTransportationFromMeta(li.meta || {});
+    const isTransport = !!transport || isTransportationMeta(li.meta || {});
 
     rows.push({
       id: o.id,
@@ -951,7 +969,7 @@ function flattenOrderToRows(o) {
       attendee_state: li.meta?.attendeeState || "",
       attendee_postal: li.meta?.attendeePostal || "",
       attendee_country: li.meta?.attendeeCountry || "",
-      category: li.category || "other",
+      category: isTransport ? "transportation" : (li.category || "other"),
       item: li.itemName || "",
       item_id: rawId,
       corsage_wear: /(corsage|boutonniere)/.test(base) ? (li.meta?.corsageWear || li.meta?.corsage_wear || "") : "",
@@ -962,12 +980,15 @@ function flattenOrderToRows(o) {
       net: (net || 0) / 100,
       status: o.status || "paid",
       notes:
-        li.category === "banquet"
+        isTransport
+          ? [transportationNotes(transport), li.meta?.itemNote, li.meta?.attendeeNotes, li.meta?.dietaryNote].filter(Boolean).join("; ")
+          : li.category === "banquet"
           ? [li.meta?.attendeeNotes, li.meta?.dietaryNote].filter(Boolean).join("; ")
           : [li.meta?.itemNote, li.meta?.attendeeNotes, li.meta?.dietaryNote]
           .filter(Boolean)
           .join("; ")
           ,
+      ...transportationRowFields(transport),
       _itemId: rawId,
       _itemBase: base,
       _itemKey: normalizeKey(rawId),
@@ -1390,7 +1411,7 @@ function renderOrderEmailHTML(order) {
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
       <img src="${absoluteUrl("/assets/img/receipt_logo.svg")}" alt="Logo" style="height:28px;max-width:160px;object-fit:contain" />
       <div>
-        <div style="font-size:18px;font-weight:800">Grand Court of PA — Order of the Amaranth</div>
+        <div style="font-size:18px;font-weight:800">Supreme Council — Order of the Amaranth</div>
         <div style="font-size:14px;color:#555">Order #${order.id}</div>
       </div>
     </div>
@@ -1720,12 +1741,13 @@ async function sendReceiptXlsxBackup(order) {
     </div>
   `;
 
-  const from = RESEND_FROM || "pa_sessions@yahoo.com";
+  if (!RESEND_FROM) throw new Error("RESEND_FROM missing");
+const from = RESEND_FROM;
 
   const payload = {
     from,
     to: [EMAIL_RECEIPTS],
-    subject: emailSubject,
+    subject,
     html,
     reply_to: REPLY_TO || undefined,
     attachments: [
@@ -1809,7 +1831,8 @@ async function sendOrderReceipts(order, { adminEmail } = {}) {
 
   if (!to.length && !bcc.length) return { ok: false, error: "no-recipient" };
 
-  const from = RESEND_FROM || "pa_sessions@yahoo.com";
+  if (!RESEND_FROM) throw new Error("RESEND_FROM missing");
+const from = RESEND_FROM;
   const subject = `Receipt — Order ${order?.id || ""}`.trim();
   const html = renderOrderEmailHTML(order);
 
@@ -1941,7 +1964,8 @@ async function sendItemReportEmailInternal({
   if (!resend) return { ok: false, error: "resend-not-configured" };
   if (!kind || !id) return { ok: false, error: "missing-kind-or-id" };
 
-  const from = RESEND_FROM || "pa_sessions@yahoo.com";
+  if (!RESEND_FROM) throw new Error("RESEND_FROM missing");
+const from = RESEND_FROM;
 
   // we still accept it, but we won't pass scheduled_at when attachments are present
   let scheduledAtIso = (scheduled_at || scheduledAt || "").trim();
@@ -2827,7 +2851,8 @@ async function emailWeeklyReceiptsZip({ mode = "test" } = {}) {
   const zipBuf = await zip.generateAsync({ type: "nodebuffer" });
   const zipB64 = Buffer.from(zipBuf).toString("base64");
 
-  const from = RESEND_FROM || "pa_sessions@yahoo.com";
+  if (!RESEND_FROM) throw new Error("RESEND_FROM missing");
+const from = RESEND_FROM;
   const subject = `Weekly Receipts ZIP — ${weekKey} (${wantMode})`;
 
   const payload = {
@@ -2916,7 +2941,8 @@ async function emailMonthlyReceiptsZip({ mode = "test" } = {}) {
   const zipBuf = await zip.generateAsync({ type: "nodebuffer" });
   const zipB64 = Buffer.from(zipBuf).toString("base64");
 
-  const from = RESEND_FROM || "pa_sessions@yahoo.com";
+  if (!RESEND_FROM) throw new Error("RESEND_FROM missing");
+const from = RESEND_FROM;
   const subject = `Monthly Receipts ZIP — ${nowMonth} (${wantMode})`;
 
   const payload = {
@@ -2988,7 +3014,8 @@ async function emailFinalReceiptsZip({ mode = "test" } = {}) {
   const zipBuf = await zip.generateAsync({ type: "nodebuffer" });
   const zipB64 = Buffer.from(zipBuf).toString("base64");
 
-  const from = RESEND_FROM || "pa_sessions@yahoo.com";
+  if (!RESEND_FROM) throw new Error("RESEND_FROM missing");
+const from = RESEND_FROM;
   const subject = `FINAL Receipts ZIP — ALL (${wantMode})`;
 
   const payload = {
