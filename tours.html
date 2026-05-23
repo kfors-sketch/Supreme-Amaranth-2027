@@ -33,7 +33,7 @@
       <h3>Before You Begin</h3>
       <p>Please <strong>add all attendees first</strong> before selecting tours.</p>
       <p>Tours are assigned to a specific attendee so reports and chairperson lists stay accurate.</p>
-      <p>If the same tour is needed for more than one person, please select it separately for each attendee, or use quantity if allowed.</p>
+      <p>Each attendee is added separately to a tour. The number of attendees added becomes the tour quantity automatically.</p>
     </section>
 
     <section class="card" style="background:rgba(255,255,255,0.40);backdrop-filter:saturate(120%) blur(2px);-webkit-backdrop-filter:saturate(120%) blur(2px);">
@@ -102,6 +102,8 @@
     .tour .row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
     .tour label{display:flex;flex-direction:column;gap:6px}
     .tour input,.tour select{padding:.55rem .7rem;border:1px solid #d1d5db;border-radius:.5rem;background:rgba(255,255,255,0.9)}
+    .tour-registration-row label{min-width:220px;flex:1 1 220px}
+    .tour-registration-row label:nth-child(3),.tour-registration-row label:nth-child(4){flex:2 1 320px}
     .grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     @media(max-width:760px){.grid-3{grid-template-columns:1fr}}
   </style>
@@ -110,7 +112,7 @@
   <script src="assets/js/cart.js"></script>
   <script src="assets/js/data-store.js"></script>
   <script src="assets/js/site-boot.js"></script>
-  <script src="assets/js/tours.js?v=tours-v1"></script>
+  <script src="assets/js/tours.js?v=tours-v2-attendee-fields"></script>
 
   <script>
   function looksLikeEmail(s){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s||'').trim()); }
