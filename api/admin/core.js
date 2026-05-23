@@ -725,6 +725,19 @@ async function getChairEmailsForItemId(id) {
     }
   } catch {}
 
+  try {
+    const tours = await kvGetSafe("tours", []);
+    if (Array.isArray(tours)) {
+      const t = tours.find((x) => String(x?.id || "") === String(id));
+      if (t) {
+        const arr = Array.isArray(t.chairEmails)
+          ? t.chairEmails
+          : safeSplit(t.chairEmails || t?.chair?.email || "");
+        if (arr.length) return arr;
+      }
+    }
+  } catch {}
+
   const cfg = await kvHgetallSafe(`itemcfg:${id}`);
   const legacyArr = Array.isArray(cfg?.chairEmails)
     ? cfg.chairEmails
@@ -1199,8 +1212,9 @@ function renderOrderEmailHTML(order) {
 
     const isBanquet = cat === "banquet" || /banquet/i.test(name);
     const isAddon = cat === "addon" || /addon/i.test(li.meta?.itemType || "") || /addon/i.test(name);
+    const isTour = cat === "tour" || String(li.meta?.itemType || "").toLowerCase() === "tour";
 
-    if (isBanquet || isAddon) {
+    if (isBanquet || isAddon || isTour) {
       const attName = (li.meta && li.meta.attendeeName) || purchaserName;
       (attendeeGroups[attName] ||= []).push(li);
     } else {
