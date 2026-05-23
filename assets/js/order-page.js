@@ -241,6 +241,24 @@ function transportationDetailHtml(meta){
   if (t.paymentMode) parts.push(`Payment mode: ${escapeHtml(t.paymentMode)}`);
   return `<div class="tiny" style="opacity:.9;margin-top:4px;line-height:1.35;">${parts.join("<br>")}</div>`;
 }
+
+function tourDetailHtml(meta){
+  const m = meta || {};
+  if (String(m.category || "").toLowerCase() !== "tour" && !m.tourRegistration && !Array.isArray(m.tourAttendees)) return "";
+  const reg = (m.tourRegistration && typeof m.tourRegistration === "object") ? m.tourRegistration : (Array.isArray(m.tourAttendees) ? m.tourAttendees[0] : null) || {};
+  const parts = [];
+  const phone = String(m.cellPhone || m.attendeePhone || reg.cellPhone || "").trim();
+  const accessibility = String(m.accessibility || m.mobilityAccessibility || reg.accessibility || "").trim();
+  const notes = String(m.itemNote || m.notes || reg.notes || "").trim();
+  const dateTime = String(m.tourDateTime || "").trim();
+  const location = String(m.tourLocation || "").trim();
+  if (dateTime) parts.push(`Date/Time: ${escapeHtml(dateTime)}`);
+  if (location) parts.push(`Meeting Location: ${escapeHtml(location)}`);
+  if (phone) parts.push(`Cell: ${escapeHtml(phone)}`);
+  if (accessibility) parts.push(`Mobility / Accessibility: ${escapeHtml(accessibility)}`);
+  if (notes) parts.push(`Notes: ${escapeHtml(notes)}`);
+  return parts.length ? `<div class="tiny" style="opacity:.9;margin-top:4px;line-height:1.35;">${parts.join("<br>")}</div>` : "";
+}
 // ================================================================
 
   // ===== shared attendee storage key (same as other pages) =====
@@ -349,6 +367,7 @@ function transportationDetailHtml(meta){
 
                     const itemNote = !isBanquet ? resolveItemNote(l.meta) : "";
           const transportDetail = !isBanquet ? transportationDetailHtml(l.meta) : "";
+          const tourDetail = !isBanquet ? tourDetailHtml(l.meta) : "";
 
           const isPreReg = /pre\s*reg/i.test(String(l.itemName||"")) || /pre[\s_-]*reg/i.test(String(l.itemId||""));
           const memberLabelForLine = (attObj?.memberType === "voting") ? "Voting" : ((attObj?.memberType === "non_voting") ? "Non-Voting" : "");
@@ -356,12 +375,12 @@ function transportationDetailHtml(meta){
             ? `<div class="tiny" style="opacity:.85;">Member: ${memberLabelForLine}</div>`
             : "";
 
-          const detail = memberLine + transportDetail + (banquetNotes
+          const detail = memberLine + transportDetail + tourDetail + (banquetNotes
             ? `<div class="tiny" style="opacity:.85;">Notes: ${banquetNotes.replace(
                 /</g,
                 "&lt;"
               )}</div>`
-            : itemNote
+            : (!tourDetail && itemNote)
             ? `<div class="tiny" style="opacity:.85;">Note: ${itemNote.replace(
                 /</g,
                 "&lt;"

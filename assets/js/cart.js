@@ -191,6 +191,30 @@ function normalizeLineMeta(line){
     m.itemType = m.itemType || "transportation";
   }
 
+  // ---- Tours: keep per-attendee coordination details intact ----
+  if (String(line.itemType || "").toLowerCase() === "tour" || m.category === "tour") {
+    m.category = "tour";
+    const reg = (m.tourRegistration && typeof m.tourRegistration === "object") ? m.tourRegistration : null;
+    const attendeeName = _normStr(m.attendeeName || reg?.attendeeName);
+    const cellPhone = normalizePhoneValue(m.cellPhone || m.attendeePhone || reg?.cellPhone || "");
+    const accessibility = _normStr(m.accessibility || m.mobilityAccessibility || reg?.accessibility);
+    const notes = _normStr(m.itemNote || m.notes || reg?.notes);
+    m.cellPhone = cellPhone;
+    m.attendeePhone = cellPhone || _normStr(m.attendeePhone);
+    m.accessibility = accessibility;
+    m.mobilityAccessibility = accessibility;
+    m.notes = notes;
+    m.itemNote = notes;
+    m.tourRegistration = {
+      attendeeId: _normStr(m.attendeeId || reg?.attendeeId || line.attendeeId),
+      attendeeName,
+      cellPhone,
+      accessibility,
+      notes
+    };
+    m.tourAttendees = [m.tourRegistration];
+  }
+
   return line;
 }
 
@@ -213,6 +237,18 @@ function lineMetaSignature(line){
     // same add-on item. Include the structured data in the merge signature so
     // separate transportation requests do not collapse into one cart line.
     return JSON.stringify({ transportation: m.transportation });
+  }
+  if (String(line?.itemType || "").toLowerCase() === "tour" || m.category === "tour") {
+    // Tours are registered per attendee, with tour-specific phone/accessibility/notes.
+    // Include those details so multiple tour registrations do not accidentally merge
+    // and overwrite attendee-specific coordination information.
+    return JSON.stringify({
+      tourRegistration: m.tourRegistration || null,
+      tourAttendees: Array.isArray(m.tourAttendees) ? m.tourAttendees : [],
+      cellPhone: _normStr(m.cellPhone || m.attendeePhone),
+      accessibility: _normStr(m.accessibility || m.mobilityAccessibility),
+      note: _normStr(m.itemNote || m.notes)
+    });
   }
   return "";
 }

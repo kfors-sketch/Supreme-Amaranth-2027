@@ -41,21 +41,66 @@
     attendees.forEach(a=>{ const opt=document.createElement("option"); opt.value=a.id||a.email||a.name||""; opt.textContent=a.name||a.email||"Attendee"; sel.appendChild(opt); });
     sel.disabled=attendees.length===0;
   }
-  function addTourToCart(tour,{attendee,qty,notes}){
+  function firstNonEmpty(){ for(const v of arguments){ const s=String(v??"").trim(); if(s) return s; } return ""; }
+  function normalizePhoneText(v){
+    const raw=String(v||"").trim();
+    if(!raw) return "";
+    if(raw.startsWith("+")) return raw;
+    const d=raw.replace(/\D+/g,"");
+    if(d.length===10) return d.slice(0,3)+"-"+d.slice(3,6)+"-"+d.slice(6,10);
+    return raw;
+  }
+  function addTourToCart(tour,{attendee,cellPhone,accessibility,notes}){
     if(!window.Cart||typeof Cart.addLine!=="function"){ alert("Cart is not available yet. Please try again."); return {ok:false}; }
     if(!attendee){ alert("Please add an attendee above and select them for this tour."); return {ok:false}; }
-    const quantity=Math.max(1,Math.floor(toNumber(qty,1)));
-    const maxQty=Math.max(1,Number(tour.maxQty||1)||1);
-    if(quantity>maxQty){ alert(`Quantity cannot be more than ${maxQty}.`); return {ok:false}; }
+
+    const attendeeId=String(attendee.id||"").trim();
+    const phone=normalizePhoneText(firstNonEmpty(cellPhone,attendee.phone));
+    if(!phone){ alert("Please enter a cell phone number for this tour attendee."); return {ok:false}; }
+
     try{
       const st=Cart.get()||{}; const lines=Array.isArray(st.lines)?st.lines:[];
-      const existingQty=lines.filter(ln=>String(ln.itemType||"")==="tour"&&String(ln.itemId||"")===String(tour.id)&&String(ln.attendeeId||"")===String(attendee.id||"")).reduce((s,ln)=>s+Number(ln.qty||0),0);
+      const existingQty=lines
+        .filter(ln=>String(ln.itemType||"")==="tour"&&String(ln.itemId||"")===String(tour.id)&&String(ln.attendeeId||"")===attendeeId)
+        .reduce((s,ln)=>s+Number(ln.qty||0),0);
       const limit=Number(tour.limitPerAttendee||0);
-      if(limit>0&&existingQty+quantity>limit){ alert(`This tour is limited to ${limit} per attendee.`); return {ok:false}; }
+      if(limit>0&&existingQty+1>limit){ alert(`This tour is limited to ${limit} registration${limit===1?"":"s"} per attendee.`); return {ok:false}; }
     }catch(e){}
-    const meta={category:"tour",tourId:tour.id||"",tourName:tour.name||"",tourDateTime:tour.tourDateTime||"",tourLocation:tour.location||"",attendeeId:attendee.id||"",attendeeName:attendee.name||"",attendeeEmail:attendee.email||"",attendeePhone:attendee.phone||"",attendeeTitle:attendee.title||"",attendeeCourt:attendee.courtName||"",attendeeCourtNumber:attendee.courtNumber||"",jurisdiction:attendee.jurisdiction||"",memberType:attendee.memberType||"",notes:notes||"",itemNote:notes||""};
-    Cart.addLine({attendeeId:attendee.id||"",itemType:"tour",itemId:tour.id,itemName:tour.name,qty:quantity,unitPrice:Number(tour.price||0),meta});
-    alert("Tour added"); return {ok:true};
+
+    const accessText=String(accessibility||"").trim();
+    const noteText=String(notes||"").trim();
+    const tourRegistration={
+      attendeeId,
+      attendeeName:attendee.name||"",
+      cellPhone:phone,
+      accessibility:accessText,
+      notes:noteText
+    };
+    const meta={
+      category:"tour",
+      tourId:tour.id||"",
+      tourName:tour.name||"",
+      tourDateTime:tour.tourDateTime||"",
+      tourLocation:tour.location||"",
+      attendeeId,
+      attendeeName:attendee.name||"",
+      attendeeEmail:attendee.email||"",
+      attendeePhone:phone,
+      attendeeTitle:attendee.title||"",
+      attendeeCourt:attendee.courtName||"",
+      attendeeCourtNumber:attendee.courtNumber||"",
+      jurisdiction:attendee.jurisdiction||"",
+      memberType:attendee.memberType||"",
+      cellPhone:phone,
+      accessibility:accessText,
+      mobilityAccessibility:accessText,
+      notes:noteText,
+      itemNote:noteText,
+      tourRegistration,
+      tourAttendees:[tourRegistration]
+    };
+    Cart.addLine({attendeeId,itemType:"tour",itemId:tour.id,itemName:tour.name,qty:1,unitPrice:Number(tour.price||0),meta});
+    alert("Tour attendee added to cart"); return {ok:true};
   }
   function renderEmptyMessage(grid){ grid.innerHTML=`<section class="card"><h2>No tours available</h2><p>There are currently no tours open for registration. Please check back later.</p></section>`; }
   function buildCard(tour){
@@ -63,18 +108,38 @@
     const title=document.createElement("h2"); title.textContent=tour.name; card.appendChild(title);
     if(tour.description){ const desc=document.createElement("p"); desc.textContent=tour.description; card.appendChild(desc); }
     const details=document.createElement("div"); details.className="tiny"; details.style.cssText="opacity:.9;margin:.25rem 0 .75rem;line-height:1.45;";
-    const bits=[]; if(tour.tourDateTime)bits.push(`<strong>Date/Time:</strong> ${esc(tour.tourDateTime)}`); if(tour.location)bits.push(`<strong>Meeting Location:</strong> ${esc(tour.location)}`); bits.push(`<strong>Price:</strong> ${money(tour.price)}`);
+    const bits=[]; if(tour.tourDateTime)bits.push(`<strong>Date/Time:</strong> ${esc(tour.tourDateTime)}`); if(tour.location)bits.push(`<strong>Meeting Location:</strong> ${esc(tour.location)}`); bits.push(`<strong>Price:</strong> ${money(tour.price)} per attendee`);
     details.innerHTML=bits.join("<br>"); card.appendChild(details);
-    const row=document.createElement("div"); row.className="row";
+
+    const hint=document.createElement("p"); hint.className="tiny"; hint.style.cssText="opacity:.85;margin:.25rem 0 .75rem;";
+    hint.textContent="Add each attendee separately. The number of attendees added becomes the tour quantity.";
+    card.appendChild(hint);
+
+    const row=document.createElement("div"); row.className="row tour-registration-row";
     const attendeeWrap=document.createElement("label"); attendeeWrap.innerHTML="<span>Attendee for this tour</span>";
     const attendeeSelect=document.createElement("select"); attendeeSelect.setAttribute("data-tour-attendee-select",tour.id); attendeeWrap.appendChild(attendeeSelect); row.appendChild(attendeeWrap);
-    const qtyWrap=document.createElement("label"); qtyWrap.innerHTML="<span>Quantity</span>";
-    const qtyInput=document.createElement("input"); qtyInput.type="number"; qtyInput.min="1"; qtyInput.step="1"; qtyInput.value="1"; qtyInput.max=String(Math.max(1,tour.maxQty||1)); qtyWrap.appendChild(qtyInput); row.appendChild(qtyWrap);
-    const notesWrap=document.createElement("label"); notesWrap.innerHTML="<span>Notes (optional)</span>";
-    const notesInput=document.createElement("input"); notesInput.type="text"; notesInput.placeholder="Special notes for this tour"; notesWrap.appendChild(notesInput); row.appendChild(notesWrap);
-    const btnWrap=document.createElement("div"); btnWrap.className="inline"; const addBtn=document.createElement("button"); addBtn.type="button"; addBtn.textContent="Add to cart"; btnWrap.appendChild(addBtn);
+
+    const phoneWrap=document.createElement("label"); phoneWrap.innerHTML="<span>Cell Phone #</span>";
+    const phoneInput=document.createElement("input"); phoneInput.type="tel"; phoneInput.inputMode="tel"; phoneInput.placeholder="Cell phone for this attendee"; phoneWrap.appendChild(phoneInput); row.appendChild(phoneWrap);
+
+    const accessWrap=document.createElement("label"); accessWrap.innerHTML="<span>Mobility Concerns / Accessibility Notes</span>";
+    const accessInput=document.createElement("input"); accessInput.type="text"; accessInput.placeholder="Wheelchair, walker, cannot do stairs, etc."; accessWrap.appendChild(accessInput); row.appendChild(accessWrap);
+
+    const notesWrap=document.createElement("label"); notesWrap.innerHTML="<span>Additional Notes (optional)</span>";
+    const notesInput=document.createElement("input"); notesInput.type="text"; notesInput.placeholder="Optional notes for this tour"; notesWrap.appendChild(notesInput); row.appendChild(notesWrap);
+
+    const btnWrap=document.createElement("div"); btnWrap.className="inline"; const addBtn=document.createElement("button"); addBtn.type="button"; addBtn.textContent="Add attendee to tour"; btnWrap.appendChild(addBtn);
     card.appendChild(row); card.appendChild(btnWrap); buildAttendeeOptions(getAttendees(),attendeeSelect);
-    addBtn.addEventListener("click",()=>{ const attendee=findAttendeeByKey(attendeeSelect.value||""); const ok=addTourToCart(tour,{attendee,qty:qtyInput.value,notes:String(notesInput.value||"").trim()}); if(ok.ok){ addBtn.textContent="Added!"; addBtn.disabled=true; setTimeout(()=>{addBtn.disabled=false; addBtn.textContent="Add to cart";},700); } });
+
+    attendeeSelect.addEventListener("change",()=>{ const attendee=findAttendeeByKey(attendeeSelect.value||""); if(attendee&&!phoneInput.value) phoneInput.value=attendee.phone||""; });
+    addBtn.addEventListener("click",()=>{
+      const attendee=findAttendeeByKey(attendeeSelect.value||"");
+      const ok=addTourToCart(tour,{attendee,cellPhone:phoneInput.value,accessibility:accessInput.value,notes:notesInput.value});
+      if(ok.ok){
+        attendeeSelect.value=""; phoneInput.value=""; accessInput.value=""; notesInput.value="";
+        addBtn.textContent="Added!"; addBtn.disabled=true; setTimeout(()=>{addBtn.disabled=false; addBtn.textContent="Add attendee to tour";},700);
+      }
+    });
     return card;
   }
   function rerenderAttendeeSelects(){ const attendees=getAttendees(); document.querySelectorAll("select[data-tour-attendee-select]").forEach(sel=>buildAttendeeOptions(attendees,sel)); }
