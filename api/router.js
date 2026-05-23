@@ -71,6 +71,7 @@ import {
 
 import { getReportingPrefs, setReportingPrefs, resolveChannel, shouldSendReceiptZip } from "./admin/report-channel.js";
 import { storeTransportationPayload } from "./admin/transportation.js";
+import { loadTours, saveToursAndItemCfg } from "./admin/tours.js";
 
 
 import {
@@ -548,6 +549,7 @@ function isWriteAction(action) {
     "purge_orders",
     "save_banquets",
     "save_addons",
+    "save_tours",
     "save_products",
     "save_catalog_items",
     "save_settings",
@@ -1439,6 +1441,12 @@ if (req.method === "GET") {
         return REQ_OK(res, {
           requestId,
           addons: (await kvGetSafe("addons")) || [],
+        });
+      if (type === "tours")
+        return REQ_OK(res, {
+          requestId,
+          ok: true,
+          tours: await loadTours(),
         });
       if (type === "products")
         return REQ_OK(res, {
@@ -3987,6 +3995,11 @@ if (action === "send_end_of_event_reports") {
         } catch {}
 
         return REQ_OK(res, { requestId, ok: true, count: list.length });
+      }
+
+      if (action === "save_tours") {
+        const list = await saveToursAndItemCfg(body.tours);
+        return REQ_OK(res, { requestId, ok: true, count: list.length, tours: list });
       }
 
       if (action === "save_products") {
