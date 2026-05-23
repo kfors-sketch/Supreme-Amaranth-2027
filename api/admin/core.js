@@ -5,6 +5,7 @@ import { Resend } from "resend";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { extractTransportationFromMeta, hydrateTransportationLines, isTransportationMeta, transportationNotes, transportationRowFields } from "./transportation.js";
+import { extractTourFromMeta, isTourLine, tourNotes, tourRowFields } from "./tour-reports.js";
 
 // ============================================================================
 // REPORT EMAIL STAGGERING (scheduled_at)
@@ -968,6 +969,8 @@ function flattenOrderToRows(o) {
     const base = baseKey(rawId);
     const transport = extractTransportationFromMeta(li.meta || {});
     const isTransport = !!transport || isTransportationMeta(li.meta || {});
+    const tour = extractTourFromMeta(li.meta || {});
+    const isTour = !!tour || isTourLine(li);
 
     rows.push({
       id: o.id,
@@ -976,7 +979,7 @@ function flattenOrderToRows(o) {
       attendee: li.meta?.attendeeName || "",
       attendee_title: li.meta?.attendeeTitle || "",
       attendee_email: li.meta?.attendeeEmail || "",
-      attendee_phone: li.meta?.attendeePhone || "",
+      attendee_phone: isTour ? (tour?.cellPhone || li.meta?.cellPhone || li.meta?.attendeePhone || "") : (li.meta?.attendeePhone || ""),
             court: li.meta?.attendeeCourt || li.meta?.attendeeCourtName || li.meta?.attendee_court || li.meta?.attendee_court_name || li.meta?.court || li.meta?.courtName || li.meta?.court_name || li.meta?.attendeeCourtName || "",
             court_number: li.meta?.attendeeCourtNumber || li.meta?.attendeeCourtNo || li.meta?.attendeeCourtNum || li.meta?.attendee_court_number || li.meta?.attendee_court_no || li.meta?.attendee_court_num || li.meta?.courtNumber || li.meta?.court_no || li.meta?.courtNo || li.meta?.courtNum || "",
       attendee_addr1: li.meta?.attendeeAddr1 || "",
@@ -985,7 +988,7 @@ function flattenOrderToRows(o) {
       attendee_state: li.meta?.attendeeState || "",
       attendee_postal: li.meta?.attendeePostal || "",
       attendee_country: li.meta?.attendeeCountry || "",
-      category: isTransport ? "transportation" : (li.category || "other"),
+      category: isTransport ? "transportation" : isTour ? "tour" : (li.category || "other"),
       item: li.itemName || "",
       item_id: rawId,
       corsage_wear: /(corsage|boutonniere)/.test(base) ? (li.meta?.corsageWear || li.meta?.corsage_wear || "") : "",
@@ -998,6 +1001,8 @@ function flattenOrderToRows(o) {
       notes:
         isTransport
           ? [transportationNotes(transport), li.meta?.itemNote, li.meta?.attendeeNotes, li.meta?.dietaryNote].filter(Boolean).join("; ")
+          : isTour
+          ? [tourNotes(tour), li.meta?.itemNote, li.meta?.attendeeNotes, li.meta?.dietaryNote].filter(Boolean).join("; ")
           : li.category === "banquet"
           ? [li.meta?.attendeeNotes, li.meta?.dietaryNote].filter(Boolean).join("; ")
           : [li.meta?.itemNote, li.meta?.attendeeNotes, li.meta?.dietaryNote]
@@ -1005,6 +1010,7 @@ function flattenOrderToRows(o) {
           .join("; ")
           ,
       ...transportationRowFields(transport),
+      ...tourRowFields(tour, li.meta || {}),
       _itemId: rawId,
       _itemBase: base,
       _itemKey: normalizeKey(rawId),
@@ -1930,6 +1936,27 @@ function collectAttendeesFromOrders(
         item_id: r.item_id,
         qty: r.qty,
         notes: r.notes,
+        passenger_count: r.passenger_count || "",
+        passenger_names: r.passenger_names || "",
+        passenger_phones: r.passenger_phones || "",
+        passenger_emails: r.passenger_emails || "",
+        pickup_needed: r.pickup_needed || "",
+        pickup_airport: r.pickup_airport || "",
+        pickup_airline: r.pickup_airline || "",
+        pickup_flight: r.pickup_flight || "",
+        pickup_datetime: r.pickup_datetime || "",
+        pickup_notes: r.pickup_notes || "",
+        dropoff_needed: r.dropoff_needed || "",
+        dropoff_airport: r.dropoff_airport || "",
+        dropoff_airline: r.dropoff_airline || "",
+        dropoff_flight: r.dropoff_flight || "",
+        dropoff_datetime: r.dropoff_datetime || "",
+        dropoff_notes: r.dropoff_notes || "",
+        tour_datetime: r.tour_datetime || "",
+        tour_location: r.tour_location || "",
+        tour_cell_phone: r.tour_cell_phone || "",
+        tour_accessibility: r.tour_accessibility || "",
+        tour_notes: r.tour_notes || "",
       };
 
       if (includeAddress) {
@@ -2043,6 +2070,8 @@ const from = RESEND_FROM;
   const isLoveGiftBase = /(^|[-_])(love|gift|lovegift|love-gift)s?($|[-_])/.test(base);
   const isCorsageBase = /(corsage|boutonniere)/.test(base);
   const isBanquetKind = String(kind || "").toLowerCase() === "banquet";
+  const isTransportationKind = String(kind || "").toLowerCase() === "transportation";
+  const isTourKind = String(kind || "").toLowerCase() === "tour" || String(kind || "").toLowerCase() === "tours";
   const isPreRegBase = base === "pre-reg";
   const isDirectoryBase = base === "directory";
   const isProceedingsBase = base === "proceedings";
@@ -2084,6 +2113,33 @@ const from = RESEND_FROM;
     qty: "Qty",
     notes: "Notes",
   };
+
+  if (isTransportationKind) {
+    EMAIL_COLUMNS = [
+      "#", "date", "item", "qty",
+      "passenger_count", "passenger_names", "passenger_phones", "passenger_emails",
+      "pickup_needed", "pickup_airport", "pickup_airline", "pickup_flight", "pickup_datetime", "pickup_notes",
+      "dropoff_needed", "dropoff_airport", "dropoff_airline", "dropoff_flight", "dropoff_datetime", "dropoff_notes",
+      "notes"
+    ];
+    EMAIL_HEADER_LABELS = {
+      "#": "#", date: "Date", item: "Transportation", qty: "Qty",
+      passenger_count: "Passenger Count", passenger_names: "Passenger Names", passenger_phones: "Passenger Phones", passenger_emails: "Passenger Emails",
+      pickup_needed: "Pickup Needed", pickup_airport: "Pickup Airport", pickup_airline: "Pickup Airline", pickup_flight: "Pickup Flight", pickup_datetime: "Pickup Date/Time", pickup_notes: "Pickup Notes",
+      dropoff_needed: "Drop-off Needed", dropoff_airport: "Drop-off Airport", dropoff_airline: "Drop-off Airline", dropoff_flight: "Drop-off Flight", dropoff_datetime: "Drop-off Date/Time", dropoff_notes: "Drop-off Notes",
+      notes: "Notes"
+    };
+  }
+
+  if (isTourKind) {
+    EMAIL_COLUMNS = ["#", "date", "attendee", "attendee_title", "tour_cell_phone", "attendee_email", "court", "court_number", "item", "tour_datetime", "tour_location", "tour_accessibility", "qty", "notes"];
+    EMAIL_HEADER_LABELS = {
+      "#": "#", date: "Date", attendee: "Attendee", attendee_title: "Title",
+      tour_cell_phone: "Cell Phone", attendee_email: "Email", court: "Court", court_number: "Court #",
+      item: "Tour", tour_datetime: "Tour Date/Time", tour_location: "Meeting Location", tour_accessibility: "Mobility / Accessibility",
+      qty: "Qty", notes: "Notes"
+    };
+  }
 
   if (includeAddressForThisItem) {
     EMAIL_COLUMNS = [
@@ -2296,6 +2352,18 @@ const from = RESEND_FROM;
       baseRow.court_number = r.court_number || "";
     }
 
+
+    if ((EMAIL_COLUMNS || []).includes("tour_cell_phone")) baseRow.tour_cell_phone = r.tour_cell_phone || r.attendee_phone || "";
+    if ((EMAIL_COLUMNS || []).includes("tour_datetime")) baseRow.tour_datetime = r.tour_datetime || "";
+    if ((EMAIL_COLUMNS || []).includes("tour_location")) baseRow.tour_location = r.tour_location || "";
+    if ((EMAIL_COLUMNS || []).includes("tour_accessibility")) baseRow.tour_accessibility = r.tour_accessibility || "";
+    if ((EMAIL_COLUMNS || []).includes("passenger_count")) baseRow.passenger_count = r.passenger_count || "";
+    if ((EMAIL_COLUMNS || []).includes("passenger_names")) baseRow.passenger_names = r.passenger_names || "";
+    if ((EMAIL_COLUMNS || []).includes("passenger_phones")) baseRow.passenger_phones = r.passenger_phones || "";
+    if ((EMAIL_COLUMNS || []).includes("passenger_emails")) baseRow.passenger_emails = r.passenger_emails || "";
+    for (const key of ["pickup_needed","pickup_airport","pickup_airline","pickup_flight","pickup_datetime","pickup_notes","dropoff_needed","dropoff_airport","dropoff_airline","dropoff_flight","dropoff_datetime","dropoff_notes"]) {
+      if ((EMAIL_COLUMNS || []).includes(key)) baseRow[key] = r[key] || "";
+    }
 
     if (isPreRegBase) {
       baseRow.voting_status = deriveVotingStatus(r);
