@@ -131,7 +131,7 @@
     const btnWrap=document.createElement("div"); btnWrap.className="inline"; const addBtn=document.createElement("button"); addBtn.type="button"; addBtn.textContent="Add attendee to tour"; btnWrap.appendChild(addBtn);
     card.appendChild(row); card.appendChild(btnWrap); buildAttendeeOptions(getAttendees(),attendeeSelect);
 
-    attendeeSelect.addEventListener("change",()=>{ const attendee=findAttendeeByKey(attendeeSelect.value||""); if(attendee&&!phoneInput.value) phoneInput.value=attendee.phone||""; });
+    attendeeSelect.addEventListener("change",()=>{ phoneInput.value=""; });
     addBtn.addEventListener("click",()=>{
       const attendee=findAttendeeByKey(attendeeSelect.value||"");
       const ok=addTourToCart(tour,{attendee,cellPhone:phoneInput.value,accessibility:accessInput.value,notes:notesInput.value});
