@@ -38,6 +38,31 @@
   </section>
 
   <section class="card">
+    <h2>Order Type</h2>
+    <div class="grid">
+      <div>
+        <label>Entry Type</label>
+        <select id="entryType">
+          <option value="new" selected>New Group Order</option>
+          <option value="add_on">Add-On to Existing Group Order</option>
+        </select>
+      </div>
+      <div>
+        <label>Add-On Reference / Note</label>
+        <input id="addOnNote" placeholder="Example: late add-on, second check, +3 people">
+      </div>
+      <div>
+        <label>Original Order ID (optional)</label>
+        <input id="parentOrderId" placeholder="Optional if known">
+      </div>
+    </div>
+    <p class="small">
+      Use <strong>Add-On</strong> when a jurisdiction or club board sends extra people after the original order.
+      Reports can combine these by group name and meal while still keeping each late addition as its own audit record.
+    </p>
+  </section>
+
+  <section class="card">
     <h2>Meal Order</h2>
     <div class="grid">
       <div><label>Meal *</label><select id="meal"></select></div>
@@ -80,6 +105,10 @@
   const money=n=>(Number(n||0)).toLocaleString(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
   const num=v=>{const n=Number(v||0);return Number.isFinite(n)?n:0};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const keyPart=v=>String(v||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  function groupAggregationKey(groupType, groupName, mealId){
+    return [keyPart(groupType), keyPart(groupName), keyPart(mealId)].filter(Boolean).join('__');
+  }
   function tokenHeaders(){const t=localStorage.getItem('amaranth_report_token')||localStorage.getItem('adminToken')||localStorage.getItem('amaranth_admin_token')||'';return t?{'Authorization':'Bearer '+t,'x-admin-token':t}:{};}
   function isTrueFlag(v){ return v === true || String(v || '').toLowerCase() === 'true' || String(v || '') === '1'; }
   function isGroupOnlyMeal(b){ return isTrueFlag(b && (b.groupOnly ?? b.group_only ?? b.adminOnlyGroupMeal)); }
@@ -87,10 +116,10 @@
 
   async function loadBanquets(){try{const r=await fetch('/api/router?type=banquets',{cache:'no-store'});const j=await r.json();const arr=Array.isArray(j)?j:(Array.isArray(j.banquets)?j.banquets:(Array.isArray(j.items)?j.items:[]));banquets=arr.length?arr:(Array.isArray(window.BANQUETS)?window.BANQUETS:[]);}catch(e){banquets=Array.isArray(window.BANQUETS)?window.BANQUETS:[];}banquets=banquets.filter(b=>b&&b.active!==false&&isGroupOnlyMeal(b)).sort((a,b)=>(Number(a.sortOrder||1000)-Number(b.sortOrder||1000))||String(a.name||'').localeCompare(String(b.name||'')));$('meal').innerHTML='<option value="">Select group-only meal...</option>'+banquets.map(b=>`<option value="${esc(b.id)}">${esc(b.name||b.id)} — ${money(b.price||0)}</option>`).join('');}
   function banquet(){return banquets.find(b=>String(b.id)===String($('meal').value));}
-  function syncChoice(){const b=banquet();const choices=Array.isArray(b?.mealChoices)?b.mealChoices:[];$('choice').innerHTML=choices.length?('<option value="">Select...</option>'+choices.map(c=>`<option>${esc(c)}</option>`).join('')):'<option value="">No choice</option>'; if(b){$('price').value=Number(b.price||0).toFixed(2);$('decorationFee').value=Number(b.decorationFee||0).toFixed(2);} recalc();}
+  function syncChoice(){const b=banquet();const choices=Array.isArray(b?.mealChoices)?b.mealChoices:[];const buffet=isBuffetMeal(b);$('choice').innerHTML=buffet?'<option value="">Buffet — no meal choice needed</option>':(choices.length?('<option value="">Select...</option>'+choices.map(c=>`<option>${esc(c)}</option>`).join('')):'<option value="">No choice</option>');$('choice').disabled=!!buffet; if(b){$('price').value=Number(b.price||0).toFixed(2);$('decorationFee').value=Number(b.decorationFee||0).toFixed(2);} recalc();}
   function recalc(){const qty=Math.max(1,Math.round(num($('qty').value)||1));const price=num($('price').value);const decor=num($('decorationFee').value);const total=qty*price;const decorTotal=qty*decor;const paid=num($('amountPaid').value||total);$('totalBox').textContent=money(total);$('decorBox').textContent=money(decorTotal);$('hotelBox').textContent=money(total-decorTotal);$('balanceBox').textContent=money(Math.max(0,total-paid));if(!$('amountPaid').dataset.touched)$('amountPaid').value=total.toFixed(2);}
   $('meal').addEventListener('change',syncChoice);['qty','price','decorationFee'].forEach(id=>$(id).addEventListener('input',recalc));$('amountPaid').addEventListener('input',()=>{$('amountPaid').dataset.touched='1';recalc();});$('btnReset').addEventListener('click',()=>{if(confirm('Clear this group order form?'))location.reload();});
-  $('btnSave').addEventListener('click',async()=>{const groupName=$('groupName').value.trim();const b=banquet();if(!groupName){alert('Group name is required.');return;}if(!b){alert('Select a meal.');return;}const qty=Math.max(1,Math.round(num($('qty').value)||1));const price=num($('price').value);const payload={mode:$('mode').value,enteredBy:$('enteredBy').value.trim(),group:{groupType:$('groupType').value,groupName,contactName:$('contactName').value.trim(),contactEmail:$('contactEmail').value.trim(),contactPhone:$('contactPhone').value.trim()},purchaser:{name:groupName,email:$('contactEmail').value.trim(),phone:$('contactPhone').value.trim(),jurisdiction:groupName},payment:{paymentMethod:$('paymentMethod').value,checkNumber:$('checkNumber').value.trim(),dateReceived:$('dateReceived').value,amountPaid:num($('amountPaid').value),status:$('status').value},lines:[{attendeeName:groupName,itemId:b.id,itemName:b.name,category:'banquet',mealChoice:$('choice').value,dietaryNotes:$('dietaryNotes').value.trim(),qty,unitPrice:price,price,lineTotal:qty*price,decorationFee:num($('decorationFee').value)}]};$('btnSave').disabled=true;try{const r=await fetch('/api/router?action=create_group_meal_order',{method:'POST',headers:{'Content-Type':'application/json',...tokenHeaders()},body:JSON.stringify(payload)});const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j?.error?.message||j?.error||j?.message||('HTTP '+r.status));$('out').style.display='block';$('out').textContent='Saved group meal order:\n'+JSON.stringify(j,null,2);alert('Group meal order saved.');}catch(e){alert('Save failed: '+(e.message||e));}finally{$('btnSave').disabled=false;}});
+  $('btnSave').addEventListener('click',async()=>{const groupName=$('groupName').value.trim();const b=banquet();if(!groupName){alert('Group name is required.');return;}if(!b){alert('Select a meal.');return;}const qty=Math.max(1,Math.round(num($('qty').value)||1));const price=num($('price').value);const entryType=$('entryType').value;const isAddOn=entryType==='add_on';const aggregationKey=groupAggregationKey($('groupType').value,groupName,b.id);const payload={mode:$('mode').value,enteredBy:$('enteredBy').value.trim(),entryType,isAddOn,parentOrderId:$('parentOrderId').value.trim(),addOnNote:$('addOnNote').value.trim(),groupAggregationKey:aggregationKey,group:{groupType:$('groupType').value,groupName,contactName:$('contactName').value.trim(),contactEmail:$('contactEmail').value.trim(),contactPhone:$('contactPhone').value.trim(),isAddOn,parentOrderId:$('parentOrderId').value.trim(),addOnNote:$('addOnNote').value.trim(),groupAggregationKey:aggregationKey},purchaser:{name:groupName,email:$('contactEmail').value.trim(),phone:$('contactPhone').value.trim(),jurisdiction:groupName},payment:{paymentMethod:$('paymentMethod').value,checkNumber:$('checkNumber').value.trim(),dateReceived:$('dateReceived').value,amountPaid:num($('amountPaid').value),status:$('status').value},lines:[{attendeeName:groupName,itemId:b.id,itemName:b.name,category:'banquet',mealChoice:$('choice').disabled?'':$('choice').value,dietaryNotes:$('dietaryNotes').value.trim(),qty,unitPrice:price,price,lineTotal:qty*price,decorationFee:num($('decorationFee').value),buffet:isBuffetMeal(b),groupOnly:true,isAddOn,parentOrderId:$('parentOrderId').value.trim(),addOnNote:$('addOnNote').value.trim(),groupAggregationKey:aggregationKey}]};$('btnSave').disabled=true;try{const r=await fetch('/api/router?action=create_group_meal_order',{method:'POST',headers:{'Content-Type':'application/json',...tokenHeaders()},body:JSON.stringify(payload)});const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j?.error?.message||j?.error||j?.message||('HTTP '+r.status));$('out').style.display='block';$('out').textContent='Saved group meal order:\n'+JSON.stringify(j,null,2);alert(isAddOn ? 'Group meal add-on saved.' : 'Group meal order saved.');}catch(e){alert('Save failed: '+(e.message||e));}finally{$('btnSave').disabled=false;}});
   (async()=>{$('dateReceived').value=new Date().toISOString().slice(0,10);await loadBanquets();syncChoice();})();
 })();
 </script>
