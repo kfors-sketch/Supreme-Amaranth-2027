@@ -94,6 +94,33 @@ async function clearOrdersCache() {
   return { ok: true, skipped: true };
 }
 
+async function patchOrderCourtFields(orderId, fields = {}) {
+  const id = String(orderId || "").trim();
+  if (!id) throw new Error("missing-order-id");
+
+  const key = `order:${id}`;
+  const existing = (await kvHgetallSafe(key)) || {};
+  const patch = {
+    ...(fields || {}),
+    updatedAt: new Date().toISOString(),
+    adminPatchedAt: new Date().toISOString(),
+  };
+
+  await kvHsetSafe(key, patch);
+  return { ok: true, id, order: { ...existing, ...patch } };
+}
+
+async function rehashOrderAfterAdminPatch(orderId) {
+  // Compatibility helper for admin-tools-router.
+  // The split Supreme core does not currently expose full rehash internals here,
+  // so this safely records that an admin patch occurred without blocking login/router startup.
+  const id = String(orderId || "").trim();
+  if (!id) throw new Error("missing-order-id");
+
+  await kvSetSafe(`order:${id}:rehashRequestedAt`, new Date().toISOString());
+  return { ok: true, id, rehashSkipped: true };
+}
+
 /**
  * Purge orders by mode.
  * mode: "test" | "live_test" | "live"
