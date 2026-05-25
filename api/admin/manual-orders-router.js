@@ -100,6 +100,10 @@ function buildLine(raw, idx, purchaser, orderMeta = {}) {
     decorationFeeTotal,
     groupType: orderMeta.groupType || "",
     groupName: orderMeta.groupName || "",
+    isAddOn: !!orderMeta.isAddOn,
+    parentOrderId: orderMeta.parentOrderId || "",
+    addOnNote: orderMeta.addOnNote || "",
+    groupAggregationKey: orderMeta.groupAggregationKey || "",
     buffet: !!raw?.buffet,
     groupOnly: !!raw?.groupOnly,
   };
@@ -193,7 +197,16 @@ function buildOrder(body, kind) {
     country: safeStr(purchaser.country || body?.country || "US") || "US",
   };
 
-  const orderMeta = { orderSource, paymentMethod, groupType, groupName };
+  const isAddOn = !!(body?.isAddOn || body?.entryType === "add_on" || group.isAddOn);
+  const parentOrderId = safeStr(body?.parentOrderId || group.parentOrderId || "");
+  const addOnNote = safeStr(body?.addOnNote || group.addOnNote || "");
+  const groupAggregationKey = safeStr(
+    body?.groupAggregationKey ||
+    group.groupAggregationKey ||
+    [slug(groupType || "group"), slug(groupName || "group")].filter(Boolean).join("__")
+  );
+
+  const orderMeta = { orderSource, paymentMethod, groupType, groupName, isAddOn, parentOrderId, addOnNote, groupAggregationKey };
   const lines = rawLines.map((line, idx) => buildLine(line, idx, buyer, orderMeta));
   const subtotal = dollars(lines.reduce((sum, l) => sum + dollars(l.lineTotal ?? l.total ?? l.amount), 0));
   const decorationFeeTotal = dollars(lines.reduce((sum, l) => sum + dollars(l.decorationFeeTotal), 0));
