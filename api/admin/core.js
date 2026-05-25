@@ -90,6 +90,10 @@ function resolveOrderKey(order) {
   return `order:${String(order?.id || "").trim()}`;
 }
 
+async function clearOrdersCache() {
+  return { ok: true, skipped: true };
+}
+
 /**
  * Purge orders by mode.
  * mode: "test" | "live_test" | "live"
@@ -201,4 +205,5 @@ export {
   getCheckoutSettingsAuto,
   getEffectiveOrderChannel,
   purgeOrdersByMode,
+  clearOrdersCache,
 };
