@@ -34,6 +34,7 @@ import {
 } from "./admin/order-lifecycle.js";
 import { verifyAdminToken } from "./admin/security.js";
 import { handleDebugRoute } from "./admin/debug-router.js";
+import { handleManualOrdersRoute } from "./admin/manual-orders-router.js";
 
 function getRequestId(req) {
   return (
@@ -287,6 +288,8 @@ export default async function handler(req, res) {
 
       if (!(await requireAdminAuth(req, res))) return;
       if (!(await enforceLockdownIfNeeded(req, res, action, requestId))) return;
+
+      if (await handleManualOrdersRoute(req, res, baseCtx)) return;
 
       if (
         await handleAdminToolsRoute(req, res, {
