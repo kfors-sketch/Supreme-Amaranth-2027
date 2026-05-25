@@ -18,6 +18,15 @@
     return n > 0 && n < 1 ? Math.round(n * 100) : n;
   }
 
+  function truthyFlag(v) {
+    return v === true || String(v || "").toLowerCase() === "true" || String(v || "") === "1";
+  }
+
+  function isPublicVisibleBanquet(b) {
+    return !truthyFlag(b?.hiddenFromPublic ?? b?.hidden_from_public) &&
+           !truthyFlag(b?.groupOnly ?? b?.group_only ?? b?.adminOnlyGroupMeal);
+  }
+
   // Simple email check
   function looksLikeEmail(s) {
     return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s || "").trim());
