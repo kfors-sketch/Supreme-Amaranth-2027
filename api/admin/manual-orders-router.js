@@ -100,6 +100,8 @@ function buildLine(raw, idx, purchaser, orderMeta = {}) {
     decorationFeeTotal,
     groupType: orderMeta.groupType || "",
     groupName: orderMeta.groupName || "",
+    buffet: !!raw?.buffet,
+    groupOnly: !!raw?.groupOnly,
   };
 
   return {
