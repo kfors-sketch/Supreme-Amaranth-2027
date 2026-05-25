@@ -375,6 +375,11 @@
             <label for="f_price">Ticket Price (USD)</label>
             <input id="f_price" type="number" step="0.01" min="0" placeholder="60.00" />
           </div>
+          <div>
+            <label for="f_decoration_fee">Decoration Fee (USD)</label>
+            <input id="f_decoration_fee" type="number" step="0.01" min="0" placeholder="1.50" />
+            <div class="hint">Included in ticket price; tracked separately for chairman/decorations and hotel settlement.</div>
+          </div>
         </div>
 
         <label for="f_report_freq">Report Frequency</label>
@@ -595,6 +600,11 @@
     } else {
       out.price = Number(out.price) || 0;
     }
+
+    out.decorationFee = (out.decorationFee == null || out.decorationFee === "")
+      ? 0
+      : (Number(out.decorationFee) || 0);
+    out.decorationFee = Math.max(0, Math.round(out.decorationFee * 100) / 100);
 
     out.active = (out.active !== false);
 
@@ -851,6 +861,7 @@
     $('#f_meals').value = '';
     $('#f_active').value = 'true';
     $('#f_price').value = '';
+    $('#f_decoration_fee').value = '';
     $('#f_report_freq').value = 'monthly';
     $('#f_location').value = '';
     $('#f_eventAt').value = '';
@@ -878,6 +889,7 @@
 
     $('#f_active').value = String(n.active !== false);
     $('#f_price').value = n.price ? Number(n.price).toFixed(2) : '';
+    $('#f_decoration_fee').value = n.decorationFee ? Number(n.decorationFee).toFixed(2) : '';
 
     $('#f_report_freq').value = normalizeFreq(n.reportFrequency || n.report_frequency || "monthly");
 
@@ -897,6 +909,7 @@
     const mealsRaw = $('#f_meals').value.trim();
     const active = $('#f_active').value === 'true';
     const price = parseFloat($('#f_price').value || '0') || 0;
+    const decorationFee = parseFloat($('#f_decoration_fee').value || '0') || 0;
     const location = $('#f_location').value.trim();
     const freq = normalizeFreq($('#f_report_freq').value || 'monthly');
 
@@ -925,6 +938,7 @@
       id, name, active,
       sortOrder,
       price: Math.round(price * 100) / 100,
+      decorationFee: Math.round(decorationFee * 100) / 100,
       mealChoices,
       eventAt: eventAtISO,
       datetime: datetimePretty,
@@ -950,6 +964,10 @@
 
     const priceNum = Number(o.price);
     if (!Number.isFinite(priceNum) || priceNum <= 0) return 'Ticket Price must be greater than zero.';
+
+    const decorationFeeNum = Number(o.decorationFee || 0);
+    if (!Number.isFinite(decorationFeeNum) || decorationFeeNum < 0) return 'Decoration Fee must be zero or greater.';
+    if (decorationFeeNum > priceNum) return 'Decoration Fee cannot be greater than the Ticket Price.';
 
     if (o.publishStart && o.publishEnd && new Date(o.publishStart) > new Date(o.publishEnd)) {
       return 'Publish End must be after Publish Start.';
