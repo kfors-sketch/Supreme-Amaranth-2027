@@ -16,7 +16,7 @@
     <div>
       <div class="muted" style="font-weight:800">Supreme Council Admin</div>
       <h1>Group Meal Orders</h1>
-      <p class="muted">Use this for jurisdiction breakfasts and club board breakfasts/orders. Each group is stored separately for reporting.</p>
+      <p class="muted">Use this for jurisdiction breakfasts, club board dinners, and other group-only buffet meals. Each group is stored separately for reporting.</p>
     </div>
     <div class="toolbar">
       <a class="btn secondary" href="/admin/index.html">← Admin Hub</a>
@@ -81,7 +81,11 @@
   const num=v=>{const n=Number(v||0);return Number.isFinite(n)?n:0};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function tokenHeaders(){const t=localStorage.getItem('amaranth_report_token')||localStorage.getItem('adminToken')||localStorage.getItem('amaranth_admin_token')||'';return t?{'Authorization':'Bearer '+t,'x-admin-token':t}:{};}
-  async function loadBanquets(){try{const r=await fetch('/api/router?type=banquets',{cache:'no-store'});const j=await r.json();const arr=Array.isArray(j)?j:(Array.isArray(j.banquets)?j.banquets:(Array.isArray(j.items)?j.items:[]));banquets=arr.length?arr:(Array.isArray(window.BANQUETS)?window.BANQUETS:[]);}catch(e){banquets=Array.isArray(window.BANQUETS)?window.BANQUETS:[];}banquets=banquets.filter(b=>b&&b.active!==false).sort((a,b)=>(Number(a.sortOrder||1000)-Number(b.sortOrder||1000))||String(a.name||'').localeCompare(String(b.name||'')));$('meal').innerHTML='<option value="">Select meal...</option>'+banquets.map(b=>`<option value="${esc(b.id)}">${esc(b.name||b.id)} — ${money(b.price||0)}</option>`).join('');}
+  function isTrueFlag(v){ return v === true || String(v || '').toLowerCase() === 'true' || String(v || '') === '1'; }
+  function isGroupOnlyMeal(b){ return isTrueFlag(b && (b.groupOnly ?? b.group_only ?? b.adminOnlyGroupMeal)); }
+  function isBuffetMeal(b){ return isTrueFlag(b && (b.buffet ?? b.buffetStyle ?? b.isBuffet)); }
+
+  async function loadBanquets(){try{const r=await fetch('/api/router?type=banquets',{cache:'no-store'});const j=await r.json();const arr=Array.isArray(j)?j:(Array.isArray(j.banquets)?j.banquets:(Array.isArray(j.items)?j.items:[]));banquets=arr.length?arr:(Array.isArray(window.BANQUETS)?window.BANQUETS:[]);}catch(e){banquets=Array.isArray(window.BANQUETS)?window.BANQUETS:[];}banquets=banquets.filter(b=>b&&b.active!==false&&isGroupOnlyMeal(b)).sort((a,b)=>(Number(a.sortOrder||1000)-Number(b.sortOrder||1000))||String(a.name||'').localeCompare(String(b.name||'')));$('meal').innerHTML='<option value="">Select group-only meal...</option>'+banquets.map(b=>`<option value="${esc(b.id)}">${esc(b.name||b.id)} — ${money(b.price||0)}</option>`).join('');}
   function banquet(){return banquets.find(b=>String(b.id)===String($('meal').value));}
   function syncChoice(){const b=banquet();const choices=Array.isArray(b?.mealChoices)?b.mealChoices:[];$('choice').innerHTML=choices.length?('<option value="">Select...</option>'+choices.map(c=>`<option>${esc(c)}</option>`).join('')):'<option value="">No choice</option>'; if(b){$('price').value=Number(b.price||0).toFixed(2);$('decorationFee').value=Number(b.decorationFee||0).toFixed(2);} recalc();}
   function recalc(){const qty=Math.max(1,Math.round(num($('qty').value)||1));const price=num($('price').value);const decor=num($('decorationFee').value);const total=qty*price;const decorTotal=qty*decor;const paid=num($('amountPaid').value||total);$('totalBox').textContent=money(total);$('decorBox').textContent=money(decorTotal);$('hotelBox').textContent=money(total-decorTotal);$('balanceBox').textContent=money(Math.max(0,total-paid));if(!$('amountPaid').dataset.touched)$('amountPaid').value=total.toFixed(2);}

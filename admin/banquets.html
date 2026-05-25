@@ -272,6 +272,7 @@
         <li><b>Publish Start/End</b>: local date/time (<code>YYYY-MM-DDTHH:MM</code>) for when the product is live/closed.</li>
         <li><b>Report Frequency</b>: controls how often chair reports are sent for this banquet.</li>
         <li><b>Year-over-year Slot</b>: label (e.g. <code>Sunday Night Banquet</code>) to group with similar events across years.</li>
+        <li><b>Group Only / Hidden From Public / Buffet</b>: use for jurisdiction or club board meals entered only through the admin Group Meal Orders page.</li>
       </ul>
     </section>
 
@@ -382,6 +383,33 @@
           </div>
         </div>
 
+        <div class="row">
+          <div>
+            <label for="f_hidden_public">Hidden From Public</label>
+            <select id="f_hidden_public">
+              <option value="false">false</option>
+              <option value="true">true</option>
+            </select>
+            <div class="hint">Use true for meals that should not appear on the public banquet page.</div>
+          </div>
+          <div>
+            <label for="f_group_only">Group Only</label>
+            <select id="f_group_only">
+              <option value="false">false</option>
+              <option value="true">true</option>
+            </select>
+            <div class="hint">Use true for jurisdiction/club board meals entered only by admin.</div>
+          </div>
+          <div>
+            <label for="f_buffet">Buffet Style</label>
+            <select id="f_buffet">
+              <option value="false">false</option>
+              <option value="true">true</option>
+            </select>
+            <div class="hint">Use true when no entrée/meal choice is needed.</div>
+          </div>
+        </div>
+
         <label for="f_report_freq">Report Frequency</label>
         <select id="f_report_freq">
           <option value="monthly">Monthly (default)</option>
@@ -466,6 +494,8 @@
 
   // ---- Frequency helpers (UI side) ----
   const VALID_FREQS = ["daily","weekly","biweekly","monthly","none"];
+  function boolFlag(v){ return v === true || String(v || '').toLowerCase() === 'true' || String(v || '') === '1'; }
+
   function normalizeFreq(raw){
     const v = String(raw || "").trim().toLowerCase();
     if (!v) return "monthly";
@@ -605,6 +635,10 @@
       ? 0
       : (Number(out.decorationFee) || 0);
     out.decorationFee = Math.max(0, Math.round(out.decorationFee * 100) / 100);
+
+    out.hiddenFromPublic = boolFlag(out.hiddenFromPublic ?? out.hidden_from_public);
+    out.groupOnly = boolFlag(out.groupOnly ?? out.group_only ?? out.adminOnlyGroupMeal);
+    out.buffet = boolFlag(out.buffet ?? out.buffetStyle ?? out.isBuffet);
 
     out.active = (out.active !== false);
 
@@ -761,7 +795,7 @@
         <div class="mcard">
           <div class="mhead">
             <div style="min-width:0">
-              <div class="mtitle">${esc(b.name || '')}</div>
+              <div class="mtitle">${esc(b.name || '')}<br>${flagsHtml}</div>
               <div class="mid"><code>${esc(b.id || '')}</code></div>
             </div>
             <div class="muted" style="font-size:12px;white-space:nowrap">Sort: <b>${esc(String(so))}</b></div>
@@ -862,6 +896,9 @@
     $('#f_active').value = 'true';
     $('#f_price').value = '';
     $('#f_decoration_fee').value = '';
+    $('#f_hidden_public').value = 'false';
+    $('#f_group_only').value = 'false';
+    $('#f_buffet').value = 'false';
     $('#f_report_freq').value = 'monthly';
     $('#f_location').value = '';
     $('#f_eventAt').value = '';
@@ -890,6 +927,9 @@
     $('#f_active').value = String(n.active !== false);
     $('#f_price').value = n.price ? Number(n.price).toFixed(2) : '';
     $('#f_decoration_fee').value = n.decorationFee ? Number(n.decorationFee).toFixed(2) : '';
+    $('#f_hidden_public').value = String(!!n.hiddenFromPublic);
+    $('#f_group_only').value = String(!!n.groupOnly);
+    $('#f_buffet').value = String(!!n.buffet);
 
     $('#f_report_freq').value = normalizeFreq(n.reportFrequency || n.report_frequency || "monthly");
 
@@ -939,6 +979,9 @@
       sortOrder,
       price: Math.round(price * 100) / 100,
       decorationFee: Math.round(decorationFee * 100) / 100,
+      hiddenFromPublic,
+      groupOnly,
+      buffet,
       mealChoices,
       eventAt: eventAtISO,
       datetime: datetimePretty,
