@@ -111,9 +111,6 @@ async function patchOrderCourtFields(orderId, fields = {}) {
 }
 
 async function rehashOrderAfterAdminPatch(orderId) {
-  // Compatibility helper for admin-tools-router.
-  // The split Supreme core does not currently expose full rehash internals here,
-  // so this safely records that an admin patch occurred without blocking login/router startup.
   const id = String(orderId || "").trim();
   if (!id) throw new Error("missing-order-id");
 
@@ -233,4 +230,6 @@ export {
   getEffectiveOrderChannel,
   purgeOrdersByMode,
   clearOrdersCache,
+  patchOrderCourtFields,
+  rehashOrderAfterAdminPatch,
 };
