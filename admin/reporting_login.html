@@ -154,7 +154,7 @@
             );
           } else {
             setMessage(
-              "Could not log in. Please try again or contact the webmaster.",
+              "Could not log in: " + (data.error || data.message || "unknown error"),
               "error"
             );
           }
