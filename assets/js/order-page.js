@@ -811,6 +811,19 @@ const fee = feeCents / 100;
     };
   }
 
+  function findBanquetByLine(line) {
+    try {
+      const id = String(line?.itemId || line?.id || "").trim();
+      const name = String(line?.itemName || "").trim().toLowerCase();
+      const list = Array.isArray(window.BANQUETS) ? window.BANQUETS : [];
+      return list.find((b) => String(b?.id || "").trim() === id) ||
+             list.find((b) => String(b?.name || "").trim().toLowerCase() === name) ||
+             null;
+    } catch {
+      return null;
+    }
+  }
+
   // Build payload (including shipping line)
   function buildPayloadFromCart() {
     const st = Cart.get() || { lines: [], attendees: [] };
@@ -847,10 +860,22 @@ const fee = feeCents / 100;
         meta.attendeeMemberType = att.memberType || "";
       }
 
-      // Make sure banquet notes follow our rule
+      // Make sure banquet notes follow our rule.
+      // Also snapshot decoration/hotel split at checkout time so future reports remain accurate
+      // even if the banquet setup is edited later.
       if (l.itemType === "banquet") {
         const attNotes = att && att.notes ? String(att.notes) : "";
         if (!meta.attendeeNotes && attNotes) meta.attendeeNotes = attNotes;
+
+        const banquetCfg = findBanquetByLine(l);
+        const decorationFee = Number(banquetCfg?.decorationFee || l.decorationFee || meta.decorationFee || 0) || 0;
+        if (decorationFee > 0) {
+          meta.decorationFee = Math.round(decorationFee * 100) / 100;
+          const unit = Number(normalizePrice(l.unitPrice)) || 0;
+          meta.hotelAmount = Math.max(0, Math.round((unit - meta.decorationFee) * 100) / 100);
+        } else {
+          meta.decorationFee = 0;
+        }
       }
 
       // Preserve bundle fields if present on the line
