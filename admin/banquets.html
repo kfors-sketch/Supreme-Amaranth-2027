@@ -787,6 +787,12 @@
       const slotLabel = b.slotLabel || "";
       const so = (b.sortOrder == null || b.sortOrder === "") ? 1000 : Number(b.sortOrder);
 
+      const flagsHtml = [
+        b.hiddenFromPublic ? '<span class="mbadge bad">Hidden</span>' : '',
+        b.groupOnly ? '<span class="mbadge">Group Only</span>' : '',
+        b.buffet ? '<span class="mbadge">Buffet</span>' : ''
+      ].filter(Boolean).join(' ');
+
       const activeBadge = (b.active === false)
         ? '<span class="mbadge bad">Active: false</span>'
         : '<span class="mbadge ok">Active: true</span>';
@@ -950,6 +956,9 @@
     const active = $('#f_active').value === 'true';
     const price = parseFloat($('#f_price').value || '0') || 0;
     const decorationFee = parseFloat($('#f_decoration_fee').value || '0') || 0;
+    const hiddenFromPublic = $('#f_hidden_public').value === 'true';
+    const groupOnly = $('#f_group_only').value === 'true';
+    const buffet = $('#f_buffet').value === 'true';
     const location = $('#f_location').value.trim();
     const freq = normalizeFreq($('#f_report_freq').value || 'monthly');
 
