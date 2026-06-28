@@ -106,7 +106,12 @@
   function buildCard(tour){
     const card=document.createElement("section"); card.className="card tour";
     const title=document.createElement("h2"); title.textContent=tour.name; card.appendChild(title);
-    if(tour.description){ const desc=document.createElement("p"); desc.textContent=tour.description; card.appendChild(desc); }
+    if(tour.description){
+    const desc=document.createElement("p");
+    desc.className="tour-description";
+    desc.textContent=tour.description;
+    card.appendChild(desc);
+   }
     const details=document.createElement("div"); details.className="tiny"; details.style.cssText="opacity:.9;margin:.25rem 0 .75rem;line-height:1.45;";
     const bits=[]; if(tour.tourDateTime)bits.push(`<strong>Date/Time:</strong> ${esc(tour.tourDateTime)}`); if(tour.location)bits.push(`<strong>Meeting Location:</strong> ${esc(tour.location)}`); bits.push(`<strong>Price:</strong> ${money(tour.price)} per attendee`);
     details.innerHTML=bits.join("<br>"); card.appendChild(details);
