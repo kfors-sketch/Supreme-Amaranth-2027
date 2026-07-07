@@ -105,7 +105,18 @@
   function renderEmptyMessage(grid){ grid.innerHTML=`<section class="card"><h2>No tours available</h2><p>There are currently no tours open for registration. Please check back later.</p></section>`; }
   function buildCard(tour){
     const card=document.createElement("section"); card.className="card tour";
-    const title=document.createElement("h2"); title.textContent=tour.name; card.appendChild(title);
+    const title=document.createElement("h2");
+    title.style.textAlign = "center";
+
+    const parts = String(tour.name || "").split(":");
+
+    if (parts.length > 1) {
+     title.innerHTML = parts[0] + ":<br>" + parts.slice(1).join(":").trim();
+    } else {
+       title.textContent = tour.name;
+    }
+
+card.appendChild(title);
     if(tour.description){
     const desc=document.createElement("p");
     desc.className="tour-description";
