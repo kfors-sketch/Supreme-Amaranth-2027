@@ -138,8 +138,19 @@ card.appendChild(title);
     const phoneWrap=document.createElement("label"); phoneWrap.innerHTML="<span>Cell Phone #</span>";
     const phoneInput=document.createElement("input"); phoneInput.type="tel"; phoneInput.inputMode="tel"; phoneInput.placeholder="Cell phone for this attendee"; phoneWrap.appendChild(phoneInput); row.appendChild(phoneWrap);
 
-    const accessWrap=document.createElement("label"); accessWrap.innerHTML="<span>Mobility / Accessibility Notes</span>";
-    const accessInput=document.createElement("input"); accessInput.type="text"; accessInput.placeholder="Wheelchair, walker, cannot do stairs, etc."; accessWrap.appendChild(accessInput); row.appendChild(accessWrap);
+    let accessInput = { value: "" };
+
+    if (tour.showAccessibilityNotes === true) {
+    const accessWrap = document.createElement("label");
+    accessWrap.innerHTML = "<span>Mobility / Accessibility Notes</span>";
+
+    accessInput = document.createElement("input");
+    accessInput.type = "text";
+    accessInput.placeholder = "Please contact the tour chairperson before adding accessibility notes";
+
+    accessWrap.appendChild(accessInput);
+    row.appendChild(accessWrap);
+}
 
     const notesWrap=document.createElement("label"); notesWrap.innerHTML="<span>Additional Notes (optional)</span>";
     const notesInput=document.createElement("input"); notesInput.type="text"; notesInput.placeholder="Optional notes for this tour"; notesWrap.appendChild(notesInput); row.appendChild(notesWrap);
