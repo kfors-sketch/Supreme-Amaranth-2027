@@ -109,7 +109,7 @@
     if(tour.description){
     const desc=document.createElement("p");
     desc.className="tour-description";
-    desc.textContent=tour.description;
+    desc.innerHTML=tour.description;
     card.appendChild(desc);
    }
     const details=document.createElement("div"); details.className="tiny"; details.style.cssText="opacity:.9;margin:.25rem 0 .75rem;line-height:1.45;";
