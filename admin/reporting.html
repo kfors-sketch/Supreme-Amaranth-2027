@@ -13,7 +13,8 @@
   // --- Maintenance check before redirect ---
   async function checkMaintenanceAndRedirect(){
     try {
-      const resp = await fetch('/api/admin/settings.js');
+      const resp = await fetch('/api/router?type=settings', { cache: 'no-store' });
+      if (!resp.ok) throw new Error('settings not available');
       const data = await resp.json();
 
       // If maintenance mode is active, show message instead of redirect
