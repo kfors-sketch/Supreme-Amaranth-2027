@@ -1,5 +1,7 @@
 // /api/supplies-request-price.js
 import { Resend } from "resend";
+import { kv } from "@vercel/kv";
+import { enforcePublicFormRateLimit, validateSuppliesInput } from "./admin/public-form-security.js";
 
 const json = (res, status, obj) => {
   res.statusCode = status;
@@ -23,19 +25,24 @@ export default async function handler(req, res) {
   const TO_SUPREME_SECRETARY = process.env.SUPREME_SECRETARY_EMAIL; // required
   const CC_ME = process.env.SUPPLIES_PRICE_CC || "kfors@verizon.net"; // you
 
-  if (!RESEND_API_KEY) return json(res, 500, { ok: false, error: "Missing RESEND_API_KEY" });
-  if (!TO_SUPREME_SECRETARY) return json(res, 500, { ok: false, error: "Missing SUPREME_SECRETARY_EMAIL" });
-
   let body;
   try {
+    if (typeof req.body === "string" && Buffer.byteLength(req.body, "utf8") > 16_384) throw new Error("body-too-large");
     body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
   } catch {
     return json(res, 400, { ok: false, error: "Invalid JSON body" });
   }
 
-  const item = body?.item || {};
-  const purchaser = body?.purchaser || {};
-  const notes = body?.notes || "";
+  const checked = validateSuppliesInput(body);
+  if (checked.error === "bot-detected") return json(res, 200, { ok: true });
+  if (checked.error) return json(res, 400, { ok: false, error: checked.error });
+  const limited = await enforcePublicFormRateLimit(kv, req, "supplies-price");
+  if (!limited.ok) return json(res, limited.unavailable ? 503 : 429, { ok: false, error: limited.unavailable ? "rate-limit-unavailable" : "rate-limited" });
+  if (!RESEND_API_KEY || !TO_SUPREME_SECRETARY) return json(res, 503, { ok: false, error: "mail-unavailable" });
+
+  const item = checked.value.item;
+  const purchaser = checked.value.purchaser;
+  const notes = checked.value.notes;
 
   const itemName = item?.name || "";
   const category = item?.category || "";
@@ -46,14 +53,6 @@ export default async function handler(req, res) {
   const phone = purchaser?.phone || "";
   const courtName = purchaser?.courtName || "";
   const courtNumber = purchaser?.courtNumber || "";
-
-  // Basic validation (keep it simple but effective)
-  if (!itemName || !category || !itemId) {
-    return json(res, 400, { ok: false, error: "Missing item info" });
-  }
-  if (!name || !email || !phone || !courtName || !courtNumber) {
-    return json(res, 400, { ok: false, error: "Missing purchaser info" });
-  }
 
   const subject = `Supplies Price Request — ${itemName} — Court #${courtNumber}`;
 
