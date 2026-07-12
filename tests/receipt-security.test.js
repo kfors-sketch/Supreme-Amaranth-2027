@@ -599,3 +599,16 @@ test("catalog images stay web-sized and stale public artifacts stay archived",()
   }
   for(const file of ["assets/shop/asdhgf.html","product-catalog_under cunstruction.html"]){assert.equal(fs.existsSync(new URL(`../${file}`,import.meta.url)),false);}
 });
+
+test("Vercel security headers protect all routes without enforcing CSP yet",()=>{
+  const config=JSON.parse(fs.readFileSync(new URL("../vercel.json",import.meta.url),"utf8"));
+  const global=config.headers.find((entry)=>entry.source==="/(.*)");
+  assert.ok(global);
+  const headers=Object.fromEntries(global.headers.map(({key,value})=>[key,value]));
+  assert.equal(headers["X-Content-Type-Options"],"nosniff");
+  assert.equal(headers["Referrer-Policy"],"strict-origin-when-cross-origin");
+  assert.match(headers["Permissions-Policy"],/camera=\(\)/);
+  assert.equal(headers["X-Frame-Options"],"SAMEORIGIN");
+  assert.match(headers["Content-Security-Policy-Report-Only"],/https:\/\/js\.stripe\.com/);
+  assert.equal(headers["Content-Security-Policy"],undefined);
+});
