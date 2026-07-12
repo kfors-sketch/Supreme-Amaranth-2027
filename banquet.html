@@ -533,10 +533,6 @@ if (!address1) missing.push('Address line 1');
         console.warn('Server banquets fetch failed:', e);
       }
 
-      if (!list.length && Array.isArray(window.BANQUETS)) {
-        list = window.BANQUETS;
-      }
-
       // ✅ Public page: show only active, published, public banquets
       list
         .filter(b => b.active !== false)
