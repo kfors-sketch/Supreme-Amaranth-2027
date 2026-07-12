@@ -146,15 +146,6 @@ if (typeof window !== "undefined") {
         .sort(sortBySortOrder); // NEW
     }
 
-    // 2) Fallback to static list if server empty/unavailable
-    if (!addons.length && Array.isArray(window.SUPREME_ADDONS)) {
-      addons = window.SUPREME_ADDONS
-        .map(normalizeAddon)
-        .filter((a) => a.active && isWithinWindow(a, now))
-        .slice()
-        .sort(sortBySortOrder); // NEW
-    }
-
     return addons;
   }
 

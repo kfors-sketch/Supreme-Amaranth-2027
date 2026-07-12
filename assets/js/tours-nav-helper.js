@@ -5,7 +5,6 @@
     const links=[...document.querySelectorAll('[data-tours-link]')]; if(!links.length)return;
     let tours=[];
     try{ const r=await fetch('/api/router?type=tours',{cache:'no-store'}); if(r.ok){ const j=await r.json(); tours=Array.isArray(j?.tours)?j.tours:[]; } }catch(e){}
-    if(!tours.length&&Array.isArray(window.SUPREME_TOURS))tours=window.SUPREME_TOURS;
     if(!(tours||[]).some(t=>visible(t,Date.now()))) links.forEach(a=>a.style.display='none');
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
