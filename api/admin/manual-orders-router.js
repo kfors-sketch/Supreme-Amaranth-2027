@@ -5,10 +5,18 @@
 import {
   REQ_OK,
   REQ_ERR,
-  kvHsetSafe,
+  kv,
   kvSaddSafe,
   kvSetSafe,
 } from "./core.js";
+import {
+  createManualOrderOnly,
+  authorizeManualMutation,
+  findForbiddenStripeField,
+  generateManualOrderId,
+  normalizeManualPaymentMethod,
+  recordManualOrderAudit,
+} from "./manual-order-security.js";
 
 const VALID_ACTIONS = new Set(["create_manual_order", "create_group_meal_order"]);
 const VALID_MODES = new Set(["test", "live_test", "live"]);
@@ -35,12 +43,6 @@ function dollars(v) {
   return Math.round(Number(v || 0) * 100) / 100;
 }
 
-function makeId(prefix) {
-  const ts = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `${prefix}_${ts}_${rand}`;
-}
-
 function normalizeSource(v, fallback = "mail_in") {
   const s = safeStr(v).toLowerCase().replace(/[\s-]+/g, "_");
   const allowed = new Set([
@@ -57,9 +59,7 @@ function normalizeSource(v, fallback = "mail_in") {
 }
 
 function normalizePaymentMethod(v) {
-  const s = safeStr(v).toLowerCase().replace(/[\s-]+/g, "_");
-  const allowed = new Set(["check", "cash", "stripe", "card", "paypal", "complimentary", "invoice", "pending", "other"]);
-  return allowed.has(s) ? s : "check";
+  return normalizeManualPaymentMethod(v);
 }
 
 function normalizeStatus(v, amountPaid, total) {
@@ -149,17 +149,14 @@ function buildLine(raw, idx, purchaser, orderMeta = {}) {
 }
 
 async function saveManualOrder(order) {
-  const key = `order:${order.id}`;
-
-  // Hash storage matches the existing purge code. The JSON mirror and several
-  // index names make this resilient across older/newer order loaders.
-  await kvHsetSafe(key, order);
+  const saved = await createManualOrderOnly({ kv, order });
+  const key = `order:${saved.id}`;
   await kvSetSafe(`${key}:json`, order);
-  await kvSaddSafe("order:index", order.id);
-  await kvSaddSafe("orders:index", order.id);
-  await kvSaddSafe(`orders:${order.mode}`, order.id);
-  await kvSaddSafe(`manual_orders:index`, order.id);
-  return key;
+  await kvSaddSafe("order:index", saved.id);
+  await kvSaddSafe("orders:index", saved.id);
+  await kvSaddSafe(`orders:${saved.mode}`, saved.id);
+  await kvSaddSafe(`manual_orders:index`, saved.id);
+  return { key, order: saved };
 }
 
 function buildOrder(body, kind) {
@@ -177,6 +174,9 @@ function buildOrder(body, kind) {
     ? (groupType === "club_board" ? "club_board_group" : "jurisdiction_group")
     : normalizeSource(body?.orderSource || body?.source, "mail_in");
 
+  if (safeStr(body?.id || body?.orderId || body?.order_id)) throw new Error("caller-order-id-not-allowed");
+  const forbidden = findForbiddenStripeField(body);
+  if (forbidden) throw new Error(`manual-stripe-field-not-allowed:${forbidden}`);
   const paymentMethod = normalizePaymentMethod(payment.paymentMethod || body?.paymentMethod || "check");
   const mode = VALID_MODES.has(safeStr(body?.mode).toLowerCase()) ? safeStr(body.mode).toLowerCase() : "live";
   const enteredBy = safeStr(body?.enteredBy || payment.enteredBy || "Admin");
@@ -217,19 +217,23 @@ function buildOrder(body, kind) {
   const status = normalizeStatus(payment.status || body?.status, amountPaid, subtotal);
 
   const idBase = kind === "group" ? `${slug(groupType || "group")}-${slug(groupName || "group")}` : slug(buyer.name || "manual");
-  const id = safeStr(body?.id) || makeId(`${prefix}_${idBase || "order"}`);
+  const id = generateManualOrderId(`${prefix}_${idBase || "order"}`);
 
   return {
     id,
     order_id: id,
     session_id: id,
     sessionId: id,
-    payment_intent: safeStr(payment.paymentIntent || ""),
-    charge: safeStr(payment.charge || ""),
+    payment_intent: "",
+    charge: "",
     mode,
-    source: orderSource,
-    orderSource,
-    order_source: orderSource,
+    source: "admin-manual",
+    orderSource: "admin-manual",
+    order_source: "admin-manual",
+    manualSource: orderSource,
+    manual_source: orderSource,
+    stripeVerified: false,
+    stripe_verified: false,
     kind: kind === "group" ? "group_meal_order" : "manual_order",
     status,
     paymentStatus: status,
@@ -244,6 +248,8 @@ function buildOrder(body, kind) {
     depositedAt: safeStr(payment.depositedAt || ""),
     enteredBy,
     entered_by: enteredBy,
+    enteredAt: now,
+    entered_at: now,
     created: now,
     createdAt: now,
     created_at: now,
@@ -314,26 +320,28 @@ function buildOrder(body, kind) {
 }
 
 export async function handleManualOrdersRoute(req, res, ctx = {}) {
-  const { action, body = {}, requestId, errResponse } = ctx;
+  const { action, body = {}, requestId, errResponse, requireAdminAuth } = ctx;
   if (req.method !== "POST" || !VALID_ACTIONS.has(action)) return false;
 
   try {
+    if (!(await authorizeManualMutation({ req, res, requireAdminAuth }))) return true;
     const kind = action === "create_group_meal_order" ? "group" : "manual";
     const order = buildOrder(body, kind);
-    const key = await saveManualOrder(order);
+    const saved = await saveManualOrder(order);
+    await recordManualOrderAudit({ kv, action: "create", order: saved.order, administrator: saved.order.enteredBy });
     return REQ_OK(res, {
       requestId,
       ok: true,
       action,
-      id: order.id,
-      key,
-      mode: order.mode,
-      total: order.total,
-      amountPaid: order.amountPaid,
-      balanceDue: order.balanceDue,
-      decorationFeeTotal: order.decorationFeeTotal,
-      hotelAmount: order.hotelAmount,
-      lineCount: order.lines.length,
+      id: saved.order.id,
+      key: saved.key,
+      mode: saved.order.mode,
+      total: saved.order.total,
+      amountPaid: saved.order.amountPaid,
+      balanceDue: saved.order.balanceDue,
+      decorationFeeTotal: saved.order.decorationFeeTotal,
+      hotelAmount: saved.order.hotelAmount,
+      lineCount: saved.order.lines.length,
     });
   } catch (e) {
     return errResponse

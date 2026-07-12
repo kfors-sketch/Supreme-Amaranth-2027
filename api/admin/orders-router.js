@@ -18,8 +18,51 @@ import {
 } from "./core.js";
 
 export async function handleOrdersRoute(req, res, ctx = {}) {
-  const { url, type, requestId } = ctx;
+  const { url, type, requestId, requireAdminAuth } = ctx;
   if (req.method !== "GET") return false;
+
+  if (type === "customer_receipt") {
+    const oid = String(url.searchParams.get("oid") || "").trim();
+    const token = String(url.searchParams.get("token") || "").trim();
+    if (!oid || !token) return REQ_ERR(res, 401, "receipt-access-denied", { requestId });
+
+    const expectedHash = String(
+      await kvGetSafe(`order:${oid}:receipt_view_hash`, "")
+    ).trim();
+    const suppliedHash = crypto.createHash("sha256").update(token, "utf8").digest("hex");
+    const valid =
+      expectedHash.length === suppliedHash.length &&
+      expectedHash.length > 0 &&
+      crypto.timingSafeEqual(Buffer.from(expectedHash), Buffer.from(suppliedHash));
+    if (!valid) return REQ_ERR(res, 403, "receipt-access-denied", { requestId });
+
+    const order = await kvGetSafe(`order:${oid}`, null);
+    if (!order) return REQ_ERR(res, 404, "order-not-found", { requestId });
+    const html = await renderOrderEmailHTML(order);
+    return REQ_OK(res, {
+      requestId,
+      receipt: {
+        id: order.id,
+        amount_total: order.amount_total,
+        currency: order.currency,
+        customer_email: order.customer_email || order?.purchaser?.email || "",
+        html: html || "",
+      },
+    });
+  }
+
+  const adminTypes = new Set([
+    "orders",
+    "orders_csv",
+    "attendee_roster_csv",
+    "directory_csv",
+    "full_attendees_csv",
+    "order",
+    "order_receipt_html",
+  ]);
+  if (adminTypes.has(type)) {
+    if (!(await requireAdminAuth(req, res))) return true;
+  }
 
   if (type === "orders") {
         const ids = await kvSmembersSafe("orders:index");
@@ -553,3 +596,4 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
 
   return false;
 }
+import crypto from "crypto";

@@ -77,8 +77,10 @@ export async function handleWebhookRoute(req, res, ctx = {}) {
     );
 
     switch (event.type) {
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const session = event.data.object;
+        if (session?.payment_status !== "paid") break;
         const mode =
           typeof resolveModeFromSession === "function"
             ? await resolveModeFromSession(session)

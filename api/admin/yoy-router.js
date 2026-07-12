@@ -53,8 +53,22 @@ async function getCatalogCategoriesSafe() {
 }
 
 export async function handleYoyRoute(req, res, ctx = {}) {
-  const { url, type, requestId } = ctx;
+  const { url, type, requestId, requireAdminAuth } = ctx;
   if (req.method !== "GET") return false;
+
+  const protectedTypes = new Set([
+    "year_index",
+    "years_index",
+    "year_summary",
+    "year_multi",
+    "catalog_items_yoy",
+  ]);
+
+  if (protectedTypes.has(type)) {
+    if (typeof requireAdminAuth !== "function" || !(await requireAdminAuth(req, res))) {
+      return true;
+    }
+  }
 
   if (type === "year_index") {
     const years = await listIndexedYears();

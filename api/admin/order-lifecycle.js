@@ -3,6 +3,7 @@ import crypto from "crypto";
 
 import {
   resend,
+  kv,
   RESEND_FROM,
   REPLY_TO,
   kvGetSafe,
@@ -117,6 +118,12 @@ function postEmailKey(orderId) {
   return `order:${String(orderId || "").trim()}:post_emails_sent`;
 }
 
+async function claimPostEmailSend(orderId) {
+  const key = postEmailKey(orderId);
+  const result = await kv.set(key, "sending", { nx: true, ex: 10 * 60 });
+  return result === "OK" || result === true;
+}
+
 function adminReceiptKey(orderId) {
   return `order:${String(orderId || "").trim()}:admin_receipt_sent`;
 }
@@ -214,13 +221,17 @@ export async function sendPostOrderEmails(order, requestId) {
       if (!process.env.RECEIPTS_ADMIN_TO && er) process.env.RECEIPTS_ADMIN_TO = er;
     } catch {}
 
-    const already = await kvGetSafe(postEmailKey(order.id), "");
-    if (already) return;
+    const claimed = await claimPostEmailSend(order.id);
+    if (!claimed) return;
 
-    await kvSetSafe(postEmailKey(order.id), new Date().toISOString());
+    let customerReceiptSent = false;
 
     try {
-      await sendOrderReceipts(order);
+      const receiptResult = await sendOrderReceipts(order);
+      customerReceiptSent = !!receiptResult?.ok;
+      if (!customerReceiptSent) {
+        throw new Error(receiptResult?.error || "receipt-send-failed");
+      }
     } catch (err) {
       console.error("[post-email] sendOrderReceipts failed", {
         requestId,
@@ -262,11 +273,18 @@ export async function sendPostOrderEmails(order, requestId) {
         });
       } catch {}
     }
+
+    if (customerReceiptSent) {
+      await kvSetSafe(postEmailKey(order.id), new Date().toISOString());
+    } else {
+      await kv.del(postEmailKey(order.id)).catch(() => {});
+    }
   } catch (e) {
     console.error("[post-email] unexpected failure", {
       requestId,
       orderId: order?.id || null,
       message: e?.message || String(e),
     });
+    if (order?.id) await kv.del(postEmailKey(order.id)).catch(() => {});
   }
 }

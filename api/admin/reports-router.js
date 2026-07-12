@@ -60,6 +60,9 @@ export async function handleReportsRoute(req, res, ctx = {}) {
   // GET /api/router?type=send_item_report&... compatibility/testing route
   // --------------------------------------------------------------------
   if (req.method === "GET" && type === "send_item_report") {
+    if (!(await requireAdminAuth(req, res))) return true;
+    if (!(await enforceLockdownIfNeeded(req, res, "send_item_report", requestId))) return true;
+
     const kind = String(url.searchParams.get("kind") || "").trim().toLowerCase();
     const id = String(url.searchParams.get("id") || "").trim();
     const label = String(url.searchParams.get("label") || "").trim();
@@ -91,9 +94,6 @@ export async function handleReportsRoute(req, res, ctx = {}) {
       }
     }
 
-    if (!(await requireAdminAuth(req, res))) return true;
-    if (!(await enforceLockdownIfNeeded(req, res, "send_item_report", requestId))) return true;
-
     try {
       const startMs = Number(url.searchParams.get("startMs") || "");
       const endMs = Number(url.searchParams.get("endMs") || "");
@@ -120,6 +120,9 @@ export async function handleReportsRoute(req, res, ctx = {}) {
   if (req.method !== "POST") return false;
 
   if (action === "send_item_report") {
+    if (!(await requireAdminAuth(req, res))) return true;
+    if (!(await enforceLockdownIfNeeded(req, res, "send_item_report", requestId))) return true;
+
     try {
       const kind = String(body?.kind || body?.category || "").toLowerCase();
       const id = String(body?.id || "").trim();
@@ -156,6 +159,9 @@ export async function handleReportsRoute(req, res, ctx = {}) {
   }
 
   if (action === "register_item") {
+    if (!(await requireAdminAuth(req, res))) return true;
+    if (!(await enforceLockdownIfNeeded(req, res, "register_item", requestId))) return true;
+
     const {
       id = "",
       name = "",
@@ -208,8 +214,6 @@ export async function handleReportsRoute(req, res, ctx = {}) {
   }
 
   const adminReportActions = new Set([
-    "send_full_report",
-    "send_month_to_date",
     "send_monthly_chair_reports",
     "send_test_chair_reports",
     "send_end_of_event_reports",
@@ -219,26 +223,6 @@ export async function handleReportsRoute(req, res, ctx = {}) {
 
   if (!(await requireAdminAuth(req, res))) return true;
   if (!(await enforceLockdownIfNeeded(req, res, action, requestId))) return true;
-
-  if (action === "send_full_report") {
-    try {
-      const mod = await import("./send-full.js");
-      const result = await mod.default();
-      return REQ_OK(res, { requestId, ...(result || { ok: true }) });
-    } catch (e) {
-      return errResponse(res, 500, "send-full-failed", req, e);
-    }
-  }
-
-  if (action === "send_month_to_date") {
-    try {
-      const mod = await import("./send-month-to-date.js");
-      const result = await mod.default();
-      return REQ_OK(res, { requestId, ...(result || { ok: true }) });
-    } catch (e) {
-      return errResponse(res, 500, "send-mtd-failed", req, e);
-    }
-  }
 
   if (action === "send_monthly_chair_reports") {
     await loadAllOrdersWithRetry();

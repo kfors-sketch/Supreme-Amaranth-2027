@@ -95,6 +95,23 @@ export async function handleSettingsRoute(req, res, ctx = {}) {
 
     if (type === "settings") {
       const { env, overrides, effective } = await getEffectiveSettings();
+
+      const authHeader = String(
+        req?.headers?.authorization || req?.headers?.Authorization || ""
+      ).trim();
+
+      // Public pages only need the maintenance banner state. Operational
+      // configuration is returned exclusively to an authenticated admin.
+      if (!authHeader) {
+        return !!REQ_OK(res, {
+          requestId,
+          MAINTENANCE_ON: effective.MAINTENANCE_ON,
+          MAINTENANCE_MESSAGE:
+            effective.MAINTENANCE_MESSAGE || env.MAINTENANCE_MESSAGE || "",
+        });
+      }
+
+      if (!(await requireAdminAuth(req, res))) return true;
       const lockdown = await getLockdownStateSafe().catch(() => ({
         on: false,
         message: "",
@@ -119,6 +136,7 @@ export async function handleSettingsRoute(req, res, ctx = {}) {
     }
 
     if (type === "checkout_mode") {
+      if (!(await requireAdminAuth(req, res))) return true;
       const nowMs = Date.now();
       const raw = await getCheckoutSettingsAuto(new Date(nowMs));
       const effectiveChannel = await getEffectiveOrderChannel(new Date(nowMs));

@@ -9,7 +9,9 @@ import {
   recordMailLog,
   resend,
   sendWithRetry,
+  kv,
 } from "./core.js";
+import { enforcePublicFormRateLimit, validateContactInput } from "./public-form-security.js";
 
 export async function handleContactRoute(req, res, ctx = {}) {
   const {
@@ -20,6 +22,13 @@ export async function handleContactRoute(req, res, ctx = {}) {
   } = ctx;
 
   if (action !== "contact_form") return false;
+
+        if (req.method !== "POST") return REQ_ERR(res, 405, "method-not-allowed", { requestId });
+        const checked = validateContactInput(body);
+        if (checked.error === "bot-detected") return REQ_OK(res, { requestId, ok: true });
+        if (checked.error) return REQ_ERR(res, 400, checked.error, { requestId });
+        const limited = await enforcePublicFormRateLimit(kv, req, "contact");
+        if (!limited.ok) return REQ_ERR(res, limited.unavailable ? 503 : 429, limited.unavailable ? "rate-limit-unavailable" : "rate-limited", { requestId });
 
         if (!resend && !CONTACT_TO)
           return REQ_ERR(res, 500, "resend-not-configured", { requestId });
@@ -32,15 +41,7 @@ export async function handleContactRoute(req, res, ctx = {}) {
           page = "",
           item = "",
           message: msg = "",
-        } = body || {};
-
-        const missing = [];
-        if (!String(name).trim()) missing.push("name");
-        if (!String(email).trim()) missing.push("email");
-        if (!String(topic).trim()) missing.push("topic");
-        if (!String(msg).trim()) missing.push("message");
-        if (missing.length)
-          return REQ_ERR(res, 400, "missing-fields", { requestId, missing });
+        } = checked.value;
 
         const topicMap = {
           banquets: "Banquets / meal choices",
