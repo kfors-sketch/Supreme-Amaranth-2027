@@ -16,7 +16,7 @@ function inferStripeEnvFromCheckoutSessionId(id) {
 }
 
 export async function handleStripeInfoRoute(req, res, ctx = {}) {
-  const { url, type, requestId, errResponse } = ctx;
+  const { url, type, requestId, errResponse, requireAdminAuth } = ctx;
 
   if (req.method !== "GET") return false;
 
@@ -30,6 +30,7 @@ export async function handleStripeInfoRoute(req, res, ctx = {}) {
   }
 
   if (type === "checkout_session") {
+    if (!(await requireAdminAuth(req, res))) return true;
     const id = String(url.searchParams.get("id") || "").trim();
     if (!id) return REQ_ERR(res, 400, "missing-id", { requestId });
 

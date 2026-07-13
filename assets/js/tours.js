@@ -29,7 +29,6 @@
     const now=Date.now(); let tours=[];
     const j=await fetchJson("/api/router?type=tours");
     if(Array.isArray(j?.tours)) tours=j.tours.map(normalizeTour).filter(t=>t.active&&isWithinWindow(t,now)).sort(sortBySortOrder);
-    if(!tours.length&&Array.isArray(window.SUPREME_TOURS)) tours=window.SUPREME_TOURS.map(normalizeTour).filter(t=>t.active&&isWithinWindow(t,now)).sort(sortBySortOrder);
     return tours;
   }
   function getCartState(){ try{ return Cart.get()||{attendees:[],lines:[]}; }catch(e){ return {attendees:[],lines:[]}; } }

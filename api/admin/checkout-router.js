@@ -3,12 +3,16 @@ import {
   REQ_OK,
   REQ_ERR,
   cents,
-  dollarsToCents,
   toCentsAuto,
   getEffectiveOrderChannel,
 } from "./core.js";
 
 import { storeTransportationPayload } from "./transportation.js";
+import {
+  calculateProcessingFeeCents,
+  loadCheckoutCatalogs,
+  resolveCheckoutLines,
+} from "./checkout-pricing.js";
 
 import {
   isInternationalOrder,
@@ -21,6 +25,11 @@ export async function handleCheckoutRoute(req, res, ctx = {}) {
 
       if (action === "create_checkout_session") {
         try {
+          const receiptViewToken = crypto.randomBytes(32).toString("base64url");
+          const receiptViewHash = crypto
+            .createHash("sha256")
+            .update(receiptViewToken, "utf8")
+            .digest("hex");
           const orderChannel = await getEffectiveOrderChannel().catch(() => "test");
 
           const stripe = await getStripe(orderChannel);
@@ -28,14 +37,22 @@ export async function handleCheckoutRoute(req, res, ctx = {}) {
             return REQ_ERR(res, 500, "stripe-not-configured", { requestId });
 
           const origin = req.headers.origin || `https://${req.headers.host}`;
-          const successUrl =
-            (body.success_url || `${origin}/success.html`) +
-            `?sid={CHECKOUT_SESSION_ID}`;
-          const cancelUrl = body.cancel_url || `${origin}/order.html`;
+          const success = new URL("/success.html", origin);
+          success.searchParams.set("sid", "{CHECKOUT_SESSION_ID}");
+          success.searchParams.set("receipt_token", receiptViewToken);
+          const successUrl = success.toString().replace(
+            "%7BCHECKOUT_SESSION_ID%7D",
+            "{CHECKOUT_SESSION_ID}"
+          );
+          const cancelUrl = new URL("/order.html", origin).toString();
 
           if (Array.isArray(body.lines) && body.lines.length) {
-            const lines = body.lines;
-            const fees = body.fees || { pct: 0, flat: 0 };
+            const catalogs = await loadCheckoutCatalogs();
+            const lines = resolveCheckoutLines({ lines: body.lines, catalogs });
+            const fees = {
+              pct: Number(process.env.STRIPE_FEE_PERCENT || 2.9),
+              flat: Number(process.env.STRIPE_FEE_FLAT || 0.30),
+            };
             const purchaser = body.purchaser || {};
 
             const line_items = await Promise.all(lines.map(async (l) => {
@@ -360,7 +377,6 @@ corsageNote:
             }));
 
             const pct = Number(fees.pct || 0);
-            const flatCents = toCentsAuto(fees.flat || 0);
 
             const subtotalCents = lines.reduce((s, l) => {
               const priceMode = String(l.priceMode || "").toLowerCase();
@@ -373,13 +389,8 @@ corsageNote:
             // Compute processing fee so that, after Stripe takes (pct% + flat), you net the base subtotal.
 // IMPORTANT: Stripe charges its % on the entire amount collected (including the fee line),
 // so we must "gross-up" instead of base*pct + flat.
-const rate = (pct / 100);
 const baseCentsForFee = subtotalCents; // subtotalCents already includes bundles/qty and should match your "base"
-let feeAmount = 0;
-if (baseCentsForFee > 0 && (rate > 0 || flatCents > 0) && rate < 1) {
-  const grossCents = Math.ceil((baseCentsForFee + flatCents) / (1 - rate));
-  feeAmount = Math.max(0, grossCents - baseCentsForFee);
-}
+let feeAmount = calculateProcessingFeeCents(baseCentsForFee, pct, fees.flat || 0);
 
 if (feeAmount > 0) {
   line_items.push({
@@ -474,8 +485,9 @@ function normalizeCountryCode2(raw) {
                 purchaser_state: purchaser.state || "",
                 purchaser_postal: purchaser.postal || "",
                 // ✅ store normalized code to keep reporting consistent
-                purchaser_country: purchaserCountry || "",
-                cart_count: String(lines.length || 0),
+                 purchaser_country: purchaserCountry || "",
+                 cart_count: String(lines.length || 0),
+                 receipt_view_hash: receiptViewHash,
               },
             });
             return REQ_OK(res, {
@@ -486,31 +498,7 @@ function normalizeCountryCode2(raw) {
             });
           }
 
-          const items = Array.isArray(body.items) ? body.items : [];
-          if (!items.length) return REQ_ERR(res, 400, "no-items", { requestId });
-
-          const session = await stripe.checkout.sessions.create({
-            mode: "payment",
-            payment_method_types: ["card"],
-            line_items: items.map((it) => ({
-              quantity: Math.max(1, Number(it.quantity || 1)),
-              price_data: {
-                currency: "usd",
-                unit_amount: dollarsToCents(it.price || 0),
-                product_data: { name: String(it.name || "Item") },
-              },
-            })),
-            success_url: successUrl,
-            cancel_url: cancelUrl,
-            metadata: { order_channel: orderChannel, order_mode: orderChannel },
-          });
-
-          return REQ_OK(res, {
-            requestId,
-            url: session.url,
-            id: session.id,
-            mode: orderChannel,
-          });
+          return REQ_ERR(res, 400, "server-priced-lines-required", { requestId });
         } catch (e) {
           return errResponse(res, 500, "checkout-create-failed", req, e, {
             hint:
@@ -522,3 +510,4 @@ function normalizeCountryCode2(raw) {
 
   return false;
 }
+import crypto from "crypto";

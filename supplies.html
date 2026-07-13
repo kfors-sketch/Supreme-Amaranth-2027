@@ -275,8 +275,6 @@
         }
       } catch (_) {}
 
-      if (!rawItems.length) rawItems = (window.SUPPLIES_ITEMS || []);
-
       // 2) Show all items (request-only + priced)
       const visible = (rawItems || []).filter(it => isVisibleItem(it));
 
@@ -508,6 +506,7 @@ const reqOnly = isRequestOnly(item) || (price <= 0 && item.active === false);
           courtNumber: document.getElementById('q_courtno').value.trim(),
         };
         const notes = document.getElementById('q_notes').value.trim();
+        const website = document.getElementById('q_website').value;
 
         try {
           const resp = await fetch('/api/supplies-request-price', {
@@ -516,7 +515,8 @@ const reqOnly = isRequestOnly(item) || (price <= 0 && item.active === false);
             body: JSON.stringify({
               item: { id: _currentQuoteItem.id, name: _currentQuoteItem.name, category: _currentQuoteItem.category },
               purchaser,
-              notes
+              notes,
+              website
             })
           });
 
@@ -743,6 +743,7 @@ const reqOnly = isRequestOnly(item) || (price <= 0 && item.active === false);
       </div>
 
       <form id="quoteForm" class="modal-body">
+        <input type="text" id="q_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-10000px" />
         <div class="modal-grid">
           <label class="field">
             <span>Name</span>

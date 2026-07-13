@@ -1,5 +1,6 @@
 // /api/admin/debug-router.js
 import { kv, REQ_OK } from "./core.js";
+import { authorizeDebugRoute } from "./debug-auth.js";
 
 import {
   handleSmoketest,
@@ -27,6 +28,10 @@ export async function handleDebugRoute(req, res, ctx = {}) {
 
   if (req.method !== "GET") return false;
 
+  const debugAuth = await authorizeDebugRoute({ type, requireAdminAuth, req, res });
+  if (!debugAuth.handled) return false;
+  if (!debugAuth.authorized) return true;
+
   if (type === "smoketest") {
     const out = await handleSmoketest();
     return REQ_OK(res, { requestId, ...out });
@@ -38,8 +43,6 @@ export async function handleDebugRoute(req, res, ctx = {}) {
   }
 
   if (type === "debug_mail_recent") {
-    if (!(await requireAdminAuth(req, res))) return true;
-
     const limitRaw = url.searchParams.get("limit") || "20";
     let limit = Number(limitRaw);
     if (!Number.isFinite(limit)) limit = 20;

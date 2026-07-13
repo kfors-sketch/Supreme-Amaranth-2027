@@ -466,10 +466,6 @@
         console.warn('Product fetch failed, falling back to static items:', e);
       }
 
-      if (!rawItems.length){
-        rawItems = (window.CHARITY_ITEMS || []);
-      }
-
       // NEW: apply visibility filter + sortOrder sort (then name)
       items = (rawItems || [])
         .filter(it => isVisibleItem(it, now))

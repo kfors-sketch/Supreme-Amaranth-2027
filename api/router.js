@@ -44,36 +44,11 @@ function getRequestId(req) {
   );
 }
 
-function toSafeError(err) {
-  const e = err || {};
-  const stripe = {};
-
-  if (e.type) stripe.type = String(e.type);
-  if (e.code) stripe.code = String(e.code);
-  if (e.param) stripe.param = String(e.param);
-  if (e.decline_code) stripe.decline_code = String(e.decline_code);
-  if (e.statusCode || e.status_code) {
-    stripe.status = Number(e.statusCode || e.status_code);
-  }
-
-  const safe = {
-    name: String(e.name || "Error"),
-    message: String(e.message || e.toString?.() || "Unknown error"),
-    stackTop: typeof e.stack === "string" ? e.stack.split("\n")[0] : "",
-  };
-
-  if (Object.keys(stripe).length) safe.stripe = stripe;
-  return safe;
-}
-
 function errResponse(res, status, code, req, err, extra = {}) {
   const requestId = getRequestId(req);
-  const safe = toSafeError(err);
   console.error(`[router] ${code} requestId=${requestId}`, err);
   return REQ_ERR(res, status, code, {
     requestId,
-    error: safe,
-    ...extra,
   });
 }
 

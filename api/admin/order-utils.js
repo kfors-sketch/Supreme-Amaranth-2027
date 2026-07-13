@@ -61,11 +61,18 @@ export async function fetchSessionAndItems(stripe, sid) {
 // ----- order persistence helpers -----
 // NOTE: accepts optional extra object (e.g. { mode: "live" })
 export async function saveOrderFromSession(sessionLike, extra = {}) {
-  const stripe = await getStripe();
+  const requestedMode = String(extra?.mode || "").trim();
+  const stripe = await getStripe(requestedMode || undefined);
   if (!stripe) throw new Error("stripe-not-configured");
 
   const sid = typeof sessionLike === "string" ? sessionLike : sessionLike.id;
   const { session: s, lineItems } = await fetchSessionAndItems(stripe, sid);
+
+  if (s?.mode !== "payment" || s?.payment_status !== "paid") {
+    const err = new Error("checkout-session-not-paid");
+    err.code = "checkout-session-not-paid";
+    throw err;
+  }
 
   const lines = lineItems.map((li) => {
     const name = li.description || li.price?.product?.name || "Item";
@@ -231,7 +238,7 @@ export async function saveOrderFromSession(sessionLike, extra = {}) {
 
   const piId = order.payment_intent;
   if (piId) {
-    const stripe2 = await getStripe();
+    const stripe2 = await getStripe(requestedMode || undefined);
     const pi = await stripe2?.paymentIntents
       .retrieve(piId, { expand: ["charges.data"] })
       .catch(() => null);
@@ -243,6 +250,9 @@ export async function saveOrderFromSession(sessionLike, extra = {}) {
 
   await kvSetSafe(`order:${order.id}`, order);
   await kvSaddSafe("orders:index", order.id);
+  if (md.receipt_view_hash) {
+    await kvSetSafe(`order:${order.id}:receipt_view_hash`, md.receipt_view_hash);
+  }
   return order;
 }
 

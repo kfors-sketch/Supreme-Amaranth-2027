@@ -4,7 +4,7 @@
 //
 // KEY FIX:
 // - When we read the request body here, we MUST cache it on req._rawBodyBuffer
-//   so router.legacy.js can reuse it if we return false (fall-through).
+//   so the main router can continue when this module returns false.
 //   Otherwise legacy sees an empty stream and returns {"error":"unknown-action"}.
 //
 

@@ -6,9 +6,15 @@ import {
   REQ_ERR,
   sendWithRetry,
   recordMailLog,
+  kv,
 } from "./core.js";
 
 import { handleAdminLogin } from "./security.js";
+import {
+  authorizeTestEmail,
+  recordTestEmailAudit,
+  sendApprovedTestEmail,
+} from "./test-email-security.js";
 
 function getUrl(req) {
   const host = req?.headers?.host || req?.headers?.["host"] || "localhost";
@@ -16,7 +22,7 @@ function getUrl(req) {
 }
 
 export async function handleAuthRoute(req, res, ctx = {}) {
-  const { action, body = {}, requestId, errResponse } = ctx;
+  const { action, body = {}, requestId, errResponse, requireAdminAuth } = ctx;
 
   if (req.method !== "POST") return false;
 
@@ -37,8 +43,6 @@ export async function handleAuthRoute(req, res, ctx = {}) {
         userAgent: ua,
       });
 
-      console.log("[router] admin_login result", result);
-
       if (result.ok) return REQ_OK(res, { requestId, ...result });
 
       const status =
@@ -54,17 +58,11 @@ export async function handleAuthRoute(req, res, ctx = {}) {
   }
 
   if (action === "test_resend") {
+    const access = await authorizeTestEmail({ req, res, body, requireAdminAuth, kv });
+    if (!access.ok) return true;
     if (!resend) return REQ_ERR(res, 500, "resend-not-configured", { requestId });
 
-    const urlObj = getUrl(req);
-    const bodyTo = (body && body.to) || urlObj.searchParams.get("to") || "";
-    const fallbackAdmin =
-      (process.env.REPORTS_BCC || process.env.REPORTS_CC || "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)[0] || "";
-    const to = (bodyTo || fallbackAdmin).trim();
-    if (!to) return REQ_ERR(res, 400, "missing-to", { requestId });
+    const to = access.recipient;
 
     const html = `<div style="font-family:system-ui,Segoe UI,Arial,sans-serif">
       <h2>Resend test OK</h2>
@@ -76,12 +74,15 @@ export async function handleAuthRoute(req, res, ctx = {}) {
     const payload = {
       from: RESEND_FROM || "onboarding@resend.dev",
       to: [to],
-      subject: "Supreme Council test email",
+      subject: "[TEST] Supreme Council administrator test email",
       html,
       reply_to: REPLY_TO || undefined,
     };
 
-    const retry = await sendWithRetry(() => resend.emails.send(payload), "manual-test");
+    const retry = await sendWithRetry(
+      () => sendApprovedTestEmail({ resend, payload }),
+      "manual-test"
+    );
 
     if (retry.ok) {
       const sendResult = retry.result;
@@ -93,6 +94,13 @@ export async function handleAuthRoute(req, res, ctx = {}) {
         resultId: sendResult?.id || null,
         kind: "manual-test",
         status: "queued",
+      });
+      await recordTestEmailAudit({
+        kv,
+        admin: access.admin,
+        recipient: to,
+        status: "queued",
+        resultId: sendResult?.id || null,
       });
       return REQ_OK(res, {
         requestId,
@@ -112,6 +120,12 @@ export async function handleAuthRoute(req, res, ctx = {}) {
       kind: "manual-test",
       status: "error",
       error: String(err?.message || err),
+    });
+    await recordTestEmailAudit({
+      kv,
+      admin: access.admin,
+      recipient: to,
+      status: "error",
     });
     return errResponse(res, 500, "resend-send-failed", req, err);
   }

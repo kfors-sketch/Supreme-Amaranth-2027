@@ -1,5 +1,3 @@
-import { dollarsToCents } from "./env.js";
-
 // -------- Email rendering + sending (receipts) --------
 function absoluteUrl(path = "/") {
   const base = (process.env.SITE_BASE_URL || "").replace(/\/+$/, "");

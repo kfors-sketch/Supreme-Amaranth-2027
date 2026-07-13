@@ -67,6 +67,7 @@
 (function(){
   const q = new URLSearchParams(location.search);
   const sid = q.get('sid') || q.get('session_id');
+  const receiptToken = q.get('receipt_token') || '';
   const nowTs = () => Date.now();
 
   // Clear cart
@@ -79,7 +80,43 @@
   const status  = document.getElementById('status');
   const details = document.getElementById('details');
 
-  if (!sid) {
+  if (sid && receiptToken) {
+    const receiptUrl = '/api/router?type=customer_receipt&oid=' +
+      encodeURIComponent(sid) + '&token=' + encodeURIComponent(receiptToken);
+
+    async function loadReceipt() {
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        const resp = await fetch(receiptUrl, { cache: 'no-store' });
+        const body = await resp.json().catch(() => null);
+        if (resp.ok && body && body.receipt) return body.receipt;
+        if (resp.status === 401 || resp.status === 403) throw new Error('receipt-access-denied');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+      throw new Error('receipt-not-ready');
+    }
+
+    loadReceipt().then(receipt => {
+      status.textContent = 'Payment confirmed.';
+      details.style.display = 'block';
+      document.getElementById('ordId').textContent = receipt.id;
+      const total = Number(receipt.amount_total || 0) / 100;
+      const currency = String(receipt.currency || 'USD').toUpperCase();
+      document.getElementById('paid').textContent = total.toLocaleString(undefined,{style:'currency',currency});
+      document.getElementById('email').textContent = receipt.customer_email || '—';
+      document.getElementById('orderTotal').textContent = total.toLocaleString(undefined,{style:'currency',currency});
+      if (receipt.html) {
+        document.getElementById('receiptHtml').innerHTML = receipt.html;
+        document.getElementById('receiptHtmlWrap').style.display = 'block';
+      }
+    }).catch(err => {
+      status.textContent = err && err.message === 'receipt-access-denied'
+        ? 'This receipt link is not valid.'
+        : 'Payment received. Your receipt is still being prepared and will also be emailed.';
+    });
+    return;
+  }
+
+  if (!sid || !receiptToken) {
     status.textContent = 'Payment completed, but no session id was provided.';
     return;
   }

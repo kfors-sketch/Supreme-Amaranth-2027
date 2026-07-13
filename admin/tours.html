@@ -53,7 +53,7 @@
 </main>
 <script src="/assets/js/admin.js"></script>
 <script>
-(function(){const b=document.getElementById('logoutBtn');if(b)b.addEventListener('click',()=>{try{localStorage.removeItem('amaranth_report_token');localStorage.removeItem('amaranth_admin_ok')}catch(e){}location.href='/admin/login.html'})})();
+(function(){const b=document.getElementById('logoutBtn');if(b)b.addEventListener('click',()=>{try{localStorage.removeItem('amaranth_report_token');localStorage.removeItem('amaranth_admin_ok')}catch(e){}location.href='/admin/reporting_login.html'})})();
 const idOK=id=>/^[a-z0-9-]+$/.test(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const pad=n=>String(n).padStart(2,'0');const VALID_FREQS=["daily","weekly","biweekly","monthly","none"];
 function normalizeFreq(raw){const v=String(raw||"").trim().toLowerCase();return VALID_FREQS.includes(v)?v:"monthly"}function describeFreq(f){f=normalizeFreq(f);return f==="daily"?"Daily":f==="weekly"?"Weekly":f==="biweekly"?"Twice per month":f==="none"?"—":"Monthly"}
 function toLocalDT(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';return`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`}function fromLocalDT(local){if(!local)return'';const d=new Date(local);return isNaN(d)?'':d.toISOString()}
