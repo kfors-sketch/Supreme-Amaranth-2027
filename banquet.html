@@ -417,7 +417,7 @@ if (!address1) missing.push('Address line 1');
         defaultChoice = b.options.find(o => o && o.price != null && o.disabled !== true) || b.options[0];
       }
       if (!defaultChoice) {
-        defaultChoice = { id: 'standard', label: 'Standard', price: (b.price != null ? b.price : 0) };
+        defaultChoice = { label: '', price: (b.price != null ? b.price : 0) };
       }
       const unitPrice = normalizePrice(defaultChoice.price);
 
@@ -470,14 +470,14 @@ if (!address1) missing.push('Address line 1');
         const dup = (st.lines || []).some(l =>
           l.attendeeId === attendeeId &&
           l.itemType === 'banquet' &&
-          String(l.itemId).startsWith(b.id + ':')
+          String(l.itemId) === String(b.id)
         );
         if (dup){ alert('This attendee is already assigned to this banquet.'); return; }
 
         Cart.addLine({
           attendeeId,
           itemType: 'banquet',
-          itemId: b.id + ":" + (defaultChoice.id || 'standard'),
+          itemId: b.id,
           itemName: `${b.name}${mealChoice ? ` (${mealChoice})` : ''}`,
           qty: 1,
           unitPrice,
