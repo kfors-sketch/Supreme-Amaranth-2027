@@ -86,7 +86,7 @@ export async function saveOrderFromSession(sessionLike, extra = {}) {
       qty,
       unitPrice: unit,
       gross: total,
-      category: (meta.category || meta.itemType || "").toLowerCase() || "other",
+      category: (meta.itemType || meta.category || "").toLowerCase() || "other",
 
       attendeeId: meta.attendeeId || meta.attendee_id || "",
       attendeeName: meta.attendeeName || meta.attendee_name || "",
@@ -208,7 +208,7 @@ export async function saveOrderFromSession(sessionLike, extra = {}) {
 
   let order = {
     id: sid,
-    created: Date.now(),
+    created: s.created ? s.created * 1000 : Date.now(),
     payment_intent:
       typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id || "",
     charge: null,
