@@ -93,6 +93,19 @@
 
     loadReceipt().then(receipt => {
       status.textContent = 'Payment confirmed.';
+
+      // Clear cart after the confirmed receipt is available
+      try {
+        if (window.Cart && typeof window.Cart.clear === 'function') {
+          window.Cart.clear();
+        } else {
+          localStorage.removeItem('cart_v2');
+          localStorage.removeItem('cart_v1');
+        }
+        localStorage.setItem('amaranth_cart_ping', String(Date.now()));
+      } catch(e) {
+        console.error('Could not clear cart:', e);
+      }
       details.style.display = 'block';
       document.getElementById('ordId').textContent = receipt.id;
       const total = Number(receipt.amount_total || 0) / 100;
