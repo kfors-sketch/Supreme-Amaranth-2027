@@ -12,7 +12,7 @@ function safeArray(v) {
 export function isTourLine(line = {}) {
   const li = line && typeof line === "object" ? line : {};
   const meta = li.meta && typeof li.meta === "object" ? li.meta : {};
-  const cat = cleanString(li.category || meta.category || meta.itemType || meta.item_type).toLowerCase();
+  const cat = cleanString(li.category || meta.itemType || meta.item_type || meta.category).toLowerCase();
   if (cat === "tour" || cat === "tours") return true;
   if (meta.tourRegistration && typeof meta.tourRegistration === "object") return true;
   if (Array.isArray(meta.tourAttendees) && meta.tourAttendees.length) return true;
@@ -26,11 +26,11 @@ export function extractTourFromMeta(meta = {}) {
   const first = safeArray(m.tourAttendees)[0] || null;
   const src = reg || first || m;
 
-  const cellPhone = cleanString(src.cellPhone || src.phone || m.cellPhone || m.attendeePhone);
+  const cellPhone = cleanString(src.cellPhone || src.phone || m.cellPhone);
   const accessibility = cleanString(src.accessibility || src.mobilityAccessibility || m.accessibility || m.mobilityAccessibility);
   const notes = cleanString(src.notes || m.tourNotes || m.notes || m.itemNote);
 
-  if (!cellPhone && !accessibility && !notes && !cleanString(m.tourId || m.tourName)) return null;
+  if (!cellPhone && !accessibility && !notes && !cleanString(m.tourId || m.tourName || m.tourDateTime || m.tourLocation)) return null;
 
   return {
     tourId: cleanString(m.tourId || ""),
