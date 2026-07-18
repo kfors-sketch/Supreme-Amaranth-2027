@@ -63,6 +63,7 @@
     </div>
   </main>
 
+<script src="/assets/js/cart.js"></script>
 <script>
 (function(){
   const q = new URLSearchParams(location.search);
@@ -70,12 +71,7 @@
   const receiptToken = q.get('receipt_token') || '';
   const nowTs = () => Date.now();
 
-  // Clear cart
-  try {
-    if (window.Cart && Cart.clear) Cart.clear();
-    localStorage.removeItem('amaranth_cart');
-    localStorage.setItem('amaranth_cart_ping', String(Date.now()));
-  } catch(e){}
+  // Cart will be cleared after the order has been finalized successfully.
 
   const status  = document.getElementById('status');
   const details = document.getElementById('details');
@@ -193,6 +189,19 @@
         // document.getElementById('orderTable').style.display = 'table';
       }
     } catch(_){}
+
+    // Clear cart after successful completion
+    try {
+      if (window.Cart && typeof window.Cart.clear === 'function') {
+        window.Cart.clear();
+      } else {
+        localStorage.removeItem('cart_v2');
+        localStorage.removeItem('cart_v1');
+      }
+      localStorage.setItem('amaranth_cart_ping', String(Date.now()));
+    } catch(e) {
+      console.error('Could not clear cart:', e);
+    }
   })
   .catch(()=>{ status.textContent = 'Could not finalize order.'; });
 })();
