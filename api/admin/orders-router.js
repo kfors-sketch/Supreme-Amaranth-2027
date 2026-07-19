@@ -324,9 +324,6 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
             "id",
             "date",
             "purchaser",
-            "attendee",
-            "attendee_email",
-            "attendee_phone",
             "passenger_count",
             "passenger_names",
             "passenger_phones",
@@ -343,12 +340,6 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
             "dropoff_flight",
             "dropoff_datetime",
             "dropoff_notes",
-            "transportation_payment_mode",
-            "transportation_payment_basis",
-            "gross",
-            "fees",
-            "net",
-            "status",
             "notes",
           ];
 
@@ -356,9 +347,6 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
             id: "Order ID",
             date: "Order Date",
             purchaser: "Purchaser",
-            attendee: "Transportation Contact",
-            attendee_email: "Contact Email",
-            attendee_phone: "Contact Phone",
             passenger_count: "Passenger Count",
             passenger_names: "Passenger Names",
             passenger_phones: "Passenger Phones",
@@ -375,12 +363,6 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
             dropoff_flight: "Drop-off Flight #",
             dropoff_datetime: "Drop-off Date & Time",
             dropoff_notes: "Drop-off Notes",
-            transportation_payment_mode: "Payment Mode",
-            transportation_payment_basis: "Payment Basis",
-            gross: "Amount Paid",
-            fees: "Fees",
-            net: "Net",
-            status: "Payment Status",
             notes: "Order Notes",
           };
 
@@ -417,7 +399,6 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
 
             const main = {};
             for (const key of headers) main[key] = row?.[key] ?? "";
-            main.attendee_phone = formatPhone(main.attendee_phone);
             if (passengerTotal > 0) {
               main.passenger_names = names[0] || "";
               main.passenger_phones = formatPhone(phones[0] || "");
@@ -718,6 +699,7 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
   return false;
 }
 import crypto from "crypto";
+
 
 
 
