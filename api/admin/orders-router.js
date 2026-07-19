@@ -327,8 +327,6 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
             "attendee",
             "attendee_email",
             "attendee_phone",
-            "court",
-            "court_number",
             "passenger_count",
             "passenger_names",
             "passenger_phones",
@@ -361,8 +359,6 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
             attendee: "Transportation Contact",
             attendee_email: "Contact Email",
             attendee_phone: "Contact Phone",
-            court: "Court",
-            court_number: "Court #",
             passenger_count: "Passenger Count",
             passenger_names: "Passenger Names",
             passenger_phones: "Passenger Phones",
@@ -396,6 +392,18 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
               .split(";")
               .map((part) => part.trim());
 
+          const formatPhone = (value) => {
+            const raw = String(value || "").trim();
+            const digits = raw.replace(/\D/g, "");
+            if (digits.length === 10) {
+              return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+            }
+            if (digits.length === 11 && digits.startsWith("1")) {
+              return `1-${digits.slice(1, 4)}-${digits.slice(4, 7)}-${digits.slice(7)}`;
+            }
+            return raw;
+          };
+
           useRows = useRows.flatMap((row) => {
             const names = splitPassengers(row?.passenger_names);
             const phones = splitPassengers(row?.passenger_phones);
@@ -409,9 +417,10 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
 
             const main = {};
             for (const key of headers) main[key] = row?.[key] ?? "";
+            main.attendee_phone = formatPhone(main.attendee_phone);
             if (passengerTotal > 0) {
               main.passenger_names = names[0] || "";
-              main.passenger_phones = phones[0] || "";
+              main.passenger_phones = formatPhone(phones[0] || "");
               main.passenger_emails = emails[0] || "";
             }
 
@@ -420,7 +429,7 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
               const detail = {};
               for (const key of headers) detail[key] = "";
               detail.passenger_names = names[i] || "";
-              detail.passenger_phones = phones[i] || "";
+              detail.passenger_phones = formatPhone(phones[i] || "");
               detail.passenger_emails = emails[i] || "";
               detailRows.push(detail);
             }
@@ -709,5 +718,6 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
   return false;
 }
 import crypto from "crypto";
+
 
 
