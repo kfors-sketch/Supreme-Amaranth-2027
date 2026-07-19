@@ -271,7 +271,11 @@ if (typeof window !== "undefined") {
     function makeFlightSection(kind) {
       const label = kind === "pickup" ? "Pickup / Arrival Information" : "Drop-off / Departure Information";
       const airportPlaceholder = kind === "pickup" ? "Arrival airport" : "Departure airport";
-      const timePlaceholder = kind === "pickup" ? "Arrival date/time" : "Departure date/time";
+      const hourOptions = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+      const minuteOptions = Array.from({ length: 60 }, (_, i) => {
+        const value = String(i).padStart(2, "0");
+        return `<option value="${value}">${value}</option>`;
+      }).join("");
       const section = document.createElement("div");
       section.className = `transport-${kind}-section`;
       section.style.cssText = "display:none;flex-direction:column;gap:8px;padding:10px;border:1px dashed rgba(0,0,0,.18);border-radius:8px;";
@@ -283,8 +287,24 @@ if (typeof window !== "undefined") {
           <label><span>Flight #</span><input data-${kind}="flight" type="text" placeholder="Flight number"></label>
         </div>
         <div class="grid-3">
-          <label><span>Date / Time *</span><input data-${kind}="datetime" type="text" placeholder="${timePlaceholder}"></label>
-          <label style="grid-column:span 2;"><span>Notes</span><input data-${kind}="notes" type="text" placeholder="Special pickup/drop-off notes"></label>
+          <label><span>Date *</span><input data-${kind}="date" type="date"></label>
+          <label>
+            <span>Time *</span>
+            <span style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+              <select data-${kind}="hour" aria-label="Hour">
+                <option value="">Hour</option>${hourOptions}
+              </select>
+              <select data-${kind}="minute" aria-label="Minute">
+                <option value="">Minute</option>${minuteOptions}
+              </select>
+              <select data-${kind}="ampm" aria-label="AM or PM">
+                <option value="">AM/PM</option>
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </span>
+          </label>
+          <label><span>Notes</span><input data-${kind}="notes" type="text" placeholder="Special pickup/drop-off notes"></label>
         </div>
       `;
       return section;
@@ -360,16 +380,22 @@ if (typeof window !== "undefined") {
 
         function collectSection(kind, section, needed) {
           if (!needed) return { needed:false };
+          const date = String(section.querySelector(`[data-${kind}="date"]`)?.value || "").trim();
+          const hour = String(section.querySelector(`[data-${kind}="hour"]`)?.value || "").trim();
+          const minute = String(section.querySelector(`[data-${kind}="minute"]`)?.value || "").trim();
+          const ampm = String(section.querySelector(`[data-${kind}="ampm"]`)?.value || "").trim();
           const obj = {
             needed:true,
             airport: String(section.querySelector(`[data-${kind}="airport"]`)?.value || "").trim(),
             airline: String(section.querySelector(`[data-${kind}="airline"]`)?.value || "").trim(),
             flight: String(section.querySelector(`[data-${kind}="flight"]`)?.value || "").trim(),
-            datetime: String(section.querySelector(`[data-${kind}="datetime"]`)?.value || "").trim(),
+            date,
+            time: hour && minute && ampm ? `${hour}:${minute} ${ampm}` : "",
+            datetime: date && hour && minute && ampm ? `${date} ${hour}:${minute} ${ampm}` : "",
             notes: String(section.querySelector(`[data-${kind}="notes"]`)?.value || "").trim(),
           };
-          if (!obj.airport || !obj.datetime) {
-            return { error:true, message: kind === "pickup" ? "Please enter pickup airport and arrival date/time." : "Please enter drop-off airport and departure date/time." };
+          if (!obj.airport || !date || !hour || !minute || !ampm) {
+            return { error:true, message: kind === "pickup" ? "Please enter pickup airport, arrival date, and arrival time." : "Please enter drop-off airport, departure date, and departure time." };
           }
           return obj;
         }
@@ -990,3 +1016,4 @@ amtWrap.appendChild(amtLabel);
     init();
   }
 })();
+
