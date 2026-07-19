@@ -312,17 +312,96 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
           mode: "",
         };
 
-        const useRows = sorted.length ? sorted : [fallback];
-        const headers = Object.keys(useRows[0] || fallback);
+        let useRows = sorted.length ? sorted : [fallback];
+        let headers = Object.keys(useRows[0] || fallback);
+        let headerLabels = [];
+        let sheetName = "Orders";
+
+        // A transportation export should be a working transportation roster,
+        // not a dump of every stored order, banquet, tour, and Stripe field.
+        if (catParam === "transportation") {
+          headers = [
+            "id",
+            "date",
+            "purchaser",
+            "attendee",
+            "attendee_email",
+            "attendee_phone",
+            "court",
+            "court_number",
+            "passenger_count",
+            "passenger_names",
+            "passenger_phones",
+            "passenger_emails",
+            "pickup_needed",
+            "pickup_airport",
+            "pickup_airline",
+            "pickup_flight",
+            "pickup_datetime",
+            "pickup_notes",
+            "dropoff_needed",
+            "dropoff_airport",
+            "dropoff_airline",
+            "dropoff_flight",
+            "dropoff_datetime",
+            "dropoff_notes",
+            "transportation_payment_mode",
+            "transportation_payment_basis",
+            "gross",
+            "fees",
+            "net",
+            "status",
+            "notes",
+          ];
+
+          headerLabels = {
+            id: "Order ID",
+            date: "Order Date",
+            purchaser: "Purchaser",
+            attendee: "Transportation Contact",
+            attendee_email: "Contact Email",
+            attendee_phone: "Contact Phone",
+            court: "Court",
+            court_number: "Court #",
+            passenger_count: "Passenger Count",
+            passenger_names: "Passenger Names",
+            passenger_phones: "Passenger Phones",
+            passenger_emails: "Passenger Emails",
+            pickup_needed: "Pickup Needed",
+            pickup_airport: "Pickup Airport",
+            pickup_airline: "Pickup Airline",
+            pickup_flight: "Pickup Flight #",
+            pickup_datetime: "Pickup Date & Time",
+            pickup_notes: "Pickup Notes",
+            dropoff_needed: "Drop-off Needed",
+            dropoff_airport: "Drop-off Airport",
+            dropoff_airline: "Drop-off Airline",
+            dropoff_flight: "Drop-off Flight #",
+            dropoff_datetime: "Drop-off Date & Time",
+            dropoff_notes: "Drop-off Notes",
+            transportation_payment_mode: "Payment Mode",
+            transportation_payment_basis: "Payment Basis",
+            gross: "Amount Paid",
+            fees: "Fees",
+            net: "Net",
+            status: "Payment Status",
+            notes: "Order Notes",
+          };
+
+          // Keep only transportation fields and include blank optional fields.
+          useRows = useRows.map((row) => {
+            const out = {};
+            for (const key of headers) out[key] = row?.[key] ?? "";
+            return out;
+          });
+          sheetName = "Transportation";
+        }
 
         let buf;
         try {
-          // core.js objectsToXlsxBuffer may internally map over a "column specs" array and
-          // assume each entry is a non-null object (e.g., spec.id). Passing [] keeps it safe.
-          buf = await objectsToXlsxBuffer(headers, useRows, [], "Orders");
+          buf = await objectsToXlsxBuffer(headers, useRows, headerLabels, sheetName);
         } catch (e) {
           console.error("orders_csv: failed to build XLSX (safe)", e);
-          // Fallback: try with a single fallback row only
           buf = await objectsToXlsxBuffer(Object.keys(fallback), [fallback], [], "Orders");
         }
 
@@ -597,3 +676,4 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
   return false;
 }
 import crypto from "crypto";
+
