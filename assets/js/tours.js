@@ -54,7 +54,7 @@
     if(!attendee){ alert("Please add an attendee above and select them for this tour."); return {ok:false}; }
 
     const attendeeId=String(attendee.id||"").trim();
-    const phone=normalizePhoneText(firstNonEmpty(cellPhone,attendee.phone));
+    const phone=normalizePhoneText(cellPhone);
     if(!phone){ alert("Please enter a cell phone number for this tour attendee."); return {ok:false}; }
 
     try{
@@ -134,8 +134,8 @@ card.appendChild(title);
     const attendeeWrap=document.createElement("label"); attendeeWrap.innerHTML="<span>Attendee for this tour</span>";
     const attendeeSelect=document.createElement("select"); attendeeSelect.setAttribute("data-tour-attendee-select",tour.id); attendeeWrap.appendChild(attendeeSelect); row.appendChild(attendeeWrap);
 
-    const phoneWrap=document.createElement("label"); phoneWrap.innerHTML="<span>Cell Phone #</span>";
-    const phoneInput=document.createElement("input"); phoneInput.type="tel"; phoneInput.inputMode="tel"; phoneInput.placeholder="Cell phone for this attendee"; phoneWrap.appendChild(phoneInput); row.appendChild(phoneWrap);
+    const phoneWrap=document.createElement("label"); phoneWrap.innerHTML="<span>Cell Phone # (required)</span>";
+    const phoneInput=document.createElement("input"); phoneInput.type="tel"; phoneInput.inputMode="tel"; phoneInput.required=true; phoneInput.setAttribute("aria-required","true"); phoneInput.placeholder="Cell phone for this attendee"; phoneWrap.appendChild(phoneInput); row.appendChild(phoneWrap);
 
     let accessInput = { value: "" };
 
