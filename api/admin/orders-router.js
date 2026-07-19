@@ -17,6 +17,21 @@ import {
   renderOrderEmailHTML,
 } from "./core.js";
 
+function formatEasternDateTime(value) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value || "");
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZoneName: "short",
+  }).format(parsed);
+}
+
 export async function handleOrdersRoute(req, res, ctx = {}) {
   const { url, type, requestId, requireAdminAuth } = ctx;
   if (req.method !== "GET") return false;
@@ -312,7 +327,11 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
           mode: "",
         };
 
-        let useRows = sorted.length ? sorted : [fallback];
+        const easternRows = sorted.map((row) => ({
+          ...row,
+          date: formatEasternDateTime(row.date),
+        }));
+        let useRows = easternRows.length ? easternRows : [fallback];
         let headers = Object.keys(useRows[0] || fallback);
         let headerLabels = [];
         let sheetName = "Orders";
@@ -345,7 +364,7 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
 
           headerLabels = {
             id: "Order ID",
-            date: "Order Date",
+            date: "Order Date (Eastern)",
             purchaser: "Purchaser",
             passenger_count: "Passenger Count",
             passenger_names: "Passenger Names",
@@ -476,9 +495,9 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
           endMs: isNaN(endMs) ? undefined : endMs,
         });
 
-        const sorted = sortByDateAsc(roster, "date").filter(
-          (r) => r && typeof r === "object"
-        );
+        const sorted = sortByDateAsc(roster, "date")
+          .filter((r) => r && typeof r === "object")
+          .map((r) => ({ ...r, date: formatEasternDateTime(r.date) }));
         const headers = [
           "date",
           "purchaser",
@@ -538,9 +557,9 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
           endMs: isNaN(endMs) ? undefined : endMs,
         });
 
-        const sorted = sortByDateAsc(roster, "date").filter(
-          (r) => r && typeof r === "object"
-        );
+        const sorted = sortByDateAsc(roster, "date")
+          .filter((r) => r && typeof r === "object")
+          .map((r) => ({ ...r, date: formatEasternDateTime(r.date) }));
         const headers = [
           "attendee",
           "attendee_title",
@@ -644,7 +663,7 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
         ];
         const numbered = unique.map((r, idx) => ({
           "#": idx + 1,
-          date: r.date,
+          date: formatEasternDateTime(r.date),
           attendee: r.attendee,
           attendee_title: r.attendee_title,
           attendee_phone: r.attendee_phone,
@@ -699,6 +718,7 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
   return false;
 }
 import crypto from "crypto";
+
 
 
 

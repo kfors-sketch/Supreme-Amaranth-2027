@@ -6,6 +6,21 @@ import { parseYMD, sortByDateAsc, baseKey, formatCoverageRange } from "./report-
 import { loadAllOrdersWithRetry, collectAttendeesFromOrders } from "./order-utils.js";
 import { getEffectiveSettings } from "./settings-utils.js";
 
+function formatEasternDateTime(value) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value || "");
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZoneName: "short",
+  }).format(parsed);
+}
+
 // ----- Chair email resolution -----
 export async function getChairEmailsForItemId(id) {
   const safeSplit = (val) =>
@@ -268,7 +283,7 @@ const from = RESEND_FROM;
   let EMAIL_COLUMNS = ["#", "date", "attendee", "attendee_title", "attendee_phone", "item", "qty", "notes"];
   let EMAIL_HEADER_LABELS = {
     "#": "#",
-    date: "Date",
+    date: "Order Date (Eastern)",
     attendee: "Attendee",
     attendee_title: "Title",
     attendee_phone: "Phone",
@@ -286,7 +301,7 @@ const from = RESEND_FROM;
       "notes"
     ];
     EMAIL_HEADER_LABELS = {
-      "#": "#", date: "Date", item: "Transportation", qty: "Qty",
+      "#": "#", date: "Order Date (Eastern)", item: "Transportation", qty: "Qty",
       passenger_count: "Passenger Count", passenger_names: "Passenger Names", passenger_phones: "Passenger Phones", passenger_emails: "Passenger Emails",
       pickup_needed: "Pickup Needed", pickup_airport: "Pickup Airport", pickup_airline: "Pickup Airline", pickup_flight: "Pickup Flight", pickup_datetime: "Pickup Date/Time", pickup_notes: "Pickup Notes",
       dropoff_needed: "Drop-off Needed", dropoff_airport: "Drop-off Airport", dropoff_airline: "Drop-off Airline", dropoff_flight: "Drop-off Flight", dropoff_datetime: "Drop-off Date/Time", dropoff_notes: "Drop-off Notes",
@@ -297,7 +312,7 @@ const from = RESEND_FROM;
   if (isTourKind) {
     EMAIL_COLUMNS = ["#", "date", "attendee", "attendee_title", "tour_cell_phone", "attendee_email", "court", "court_number", "item", "tour_datetime", "tour_location", "tour_accessibility", "qty", "notes"];
     EMAIL_HEADER_LABELS = {
-      "#": "#", date: "Date", attendee: "Attendee", attendee_title: "Title",
+      "#": "#", date: "Order Date (Eastern)", attendee: "Attendee", attendee_title: "Title",
       tour_cell_phone: "Cell Phone", attendee_email: "Email", court: "Court", court_number: "Court #",
       item: "Tour", tour_datetime: "Tour Date/Time", tour_location: "Meeting Location", tour_accessibility: "Mobility / Accessibility",
       qty: "Qty", notes: "Notes"
@@ -324,7 +339,7 @@ const from = RESEND_FROM;
     ];
     EMAIL_HEADER_LABELS = {
       "#": "#",
-      date: "Date",
+      date: "Order Date (Eastern)",
       attendee: "Attendee",
       attendee_title: "Title",
       attendee_phone: "Phone",
@@ -365,7 +380,7 @@ const from = RESEND_FROM;
     ];
     EMAIL_HEADER_LABELS = {
       "#": "#",
-      date: "Date",
+      date: "Order Date (Eastern)",
       attendee: "Attendee",
       attendee_title: "Title",
       attendee_phone: "Phone",
@@ -501,7 +516,7 @@ const from = RESEND_FROM;
 
     const baseRow = {
       "#": hasAttendee ? counter++ : "",
-      date: r.date,
+      date: formatEasternDateTime(r.date),
       attendee: r.attendee,
       attendee_title: r.attendee_title,
       attendee_phone: r.attendee_phone,
