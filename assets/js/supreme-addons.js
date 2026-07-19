@@ -286,25 +286,27 @@ if (typeof window !== "undefined") {
           <label><span>Airline</span><input data-${kind}="airline" type="text" placeholder="Airline"></label>
           <label><span>Flight #</span><input data-${kind}="flight" type="text" placeholder="Flight number"></label>
         </div>
-        <div class="grid-3">
+        <div style="display:grid;grid-template-columns:minmax(180px,1fr) minmax(300px,2fr);gap:10px;align-items:end;">
           <label><span>Date *</span><input data-${kind}="date" type="date"></label>
-          <label>
-            <span>Time *</span>
-            <span style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
-              <select data-${kind}="hour" aria-label="Hour">
+          <div>
+            <span style="display:block;margin-bottom:4px;">Time *</span>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
+              <select data-${kind}="hour" aria-label="Hour" style="min-width:80px;flex:1;">
                 <option value="">Hour</option>${hourOptions}
               </select>
-              <select data-${kind}="minute" aria-label="Minute">
+              <select data-${kind}="minute" aria-label="Minute" style="min-width:90px;flex:1;">
                 <option value="">Minute</option>${minuteOptions}
               </select>
-              <select data-${kind}="ampm" aria-label="AM or PM">
+              <select data-${kind}="ampm" aria-label="AM or PM" style="min-width:100px;flex:1;">
                 <option value="">AM/PM</option>
                 <option value="AM">AM</option>
                 <option value="PM">PM</option>
               </select>
-            </span>
-          </label>
-          <label><span>Notes</span><input data-${kind}="notes" type="text" placeholder="Special pickup/drop-off notes"></label>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label style="display:block;"><span>Notes</span><input data-${kind}="notes" type="text" placeholder="Special pickup/drop-off notes" style="width:100%;"></label>
         </div>
       `;
       return section;
@@ -1016,4 +1018,5 @@ amtWrap.appendChild(amtLabel);
     init();
   }
 })();
+
 
