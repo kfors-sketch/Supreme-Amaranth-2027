@@ -149,6 +149,10 @@ export async function saveOrderFromSession(sessionLike, extra = {}) {
         dropoffNeeded: meta.dropoffNeeded || "",
         paymentMode: meta.paymentMode || "",
         paymentBasis: meta.paymentBasis || "",
+        // Preserve the short KV reference written during checkout so the full
+        // passenger and flight payload can be restored after Stripe payment.
+        transportationRef: meta.transportationRef || meta.transportation_ref || "",
+        transportation_ref: meta.transportation_ref || meta.transportationRef || "",
         transportJson1: meta.transportJson1 || "",
         transportJson2: meta.transportJson2 || "",
         transportJson3: meta.transportJson3 || "",
@@ -460,4 +464,5 @@ export function collectAttendeesFromOrders(
 
   return allRows;
 }
+
 
