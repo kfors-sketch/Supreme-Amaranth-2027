@@ -388,11 +388,44 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
             notes: "Order Notes",
           };
 
-          // Keep only transportation fields and include blank optional fields.
-          useRows = useRows.map((row) => {
-            const out = {};
-            for (const key of headers) out[key] = row?.[key] ?? "";
-            return out;
+          // Keep only transportation fields. Put the first passenger on the
+          // main order row and list each additional passenger on a separate
+          // detail row immediately below it.
+          const splitPassengers = (value) =>
+            String(value || "")
+              .split(";")
+              .map((part) => part.trim());
+
+          useRows = useRows.flatMap((row) => {
+            const names = splitPassengers(row?.passenger_names);
+            const phones = splitPassengers(row?.passenger_phones);
+            const emails = splitPassengers(row?.passenger_emails);
+            const passengerTotal = Math.max(
+              Number(row?.passenger_count || 0),
+              names.filter(Boolean).length,
+              phones.filter(Boolean).length,
+              emails.filter(Boolean).length
+            );
+
+            const main = {};
+            for (const key of headers) main[key] = row?.[key] ?? "";
+            if (passengerTotal > 0) {
+              main.passenger_names = names[0] || "";
+              main.passenger_phones = phones[0] || "";
+              main.passenger_emails = emails[0] || "";
+            }
+
+            const detailRows = [];
+            for (let i = 1; i < passengerTotal; i++) {
+              const detail = {};
+              for (const key of headers) detail[key] = "";
+              detail.passenger_names = names[i] || "";
+              detail.passenger_phones = phones[i] || "";
+              detail.passenger_emails = emails[i] || "";
+              detailRows.push(detail);
+            }
+
+            return [main, ...detailRows];
           });
           sheetName = "Transportation";
         }
@@ -676,4 +709,5 @@ export async function handleOrdersRoute(req, res, ctx = {}) {
   return false;
 }
 import crypto from "crypto";
+
 
