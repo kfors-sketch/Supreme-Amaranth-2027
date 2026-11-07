@@ -660,18 +660,15 @@ if (notes) {
     let notesInput = null;
     let wearSelect = null;
     let transportControls = null;
-    let chairSelect = null;
+    let chairCheckbox = null;
 if (isTransportation(addon)) {
       transportControls = buildTransportationControls(addon, row);
     } else if (addon.id === "zumba-class") {
       const chairLabel = document.createElement("label");
-      chairLabel.textContent = "Do you need a chair?";
-      chairSelect = document.createElement("select");
-      chairSelect.required = true;
-      chairSelect.add(new Option("Select Yes or No", ""));
-      chairSelect.add(new Option("Yes", "Yes"));
-      chairSelect.add(new Option("No", "No"));
-      chairLabel.appendChild(chairSelect);
+      chairLabel.style.cssText = "flex-direction:row;align-items:center";
+      chairCheckbox = document.createElement("input");
+      chairCheckbox.type = "checkbox";
+      chairLabel.append(chairCheckbox, "I need a chair for Zumba.");
       row.appendChild(chairLabel);
     } else if (addon.type === "amount") {
       const amtWrap = document.createElement("label");
@@ -853,7 +850,7 @@ amtWrap.appendChild(amtLabel);
       card.appendChild(image);
     }
     if (addon.description) card.appendChild(desc);
-    if (chairSelect) {
+    if (chairCheckbox) {
       const priceLabel = document.createElement("p");
       priceLabel.textContent = "Free · One registration per attendee";
       card.appendChild(priceLabel);
@@ -880,9 +877,7 @@ amtWrap.appendChild(amtLabel);
       let qty = 1;
       let amount = addon.price;
       let variant = null;
-      if (chairSelect && !chairSelect.reportValidity()) return;
-
-      const notes = chairSelect ? `Chair needed: ${chairSelect.value}` :
+      const notes = chairCheckbox ? `Chair needed: ${chairCheckbox.checked ? "Yes" : "No"}` :
         notesInput && typeof notesInput.value === "string"
           ? notesInput.value.trim()
           : "";
