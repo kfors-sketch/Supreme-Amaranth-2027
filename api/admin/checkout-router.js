@@ -10,6 +10,7 @@ import {
 import { storeTransportationPayload } from "./transportation.js";
 import {
   calculateProcessingFeeCents,
+  isZumbaItemId,
   loadCheckoutCatalogs,
   resolveCheckoutLines,
 } from "./checkout-pricing.js";
@@ -467,7 +468,7 @@ function normalizeCountryCode2(raw) {
             }
 
             const freeZumbaOrder = subtotalCents === 0 &&
-              lines.some((line) => line.itemType === "addon" && line.itemId === "zumba-class");
+              lines.some((line) => line.itemType === "addon" && isZumbaItemId(line.itemId));
 
             const session = await stripe.checkout.sessions.create({
               mode: "payment",

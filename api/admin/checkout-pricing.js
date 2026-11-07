@@ -1,6 +1,10 @@
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
 const norm = (value) => String(value || "").trim().toLowerCase();
 
+export function isZumbaItemId(id) {
+  return id === "zumba" || id === "zumba-class";
+}
+
 function isOpen(item, nowMs) {
   if (!item || item.active === false) return false;
   const start = item.publishStart ? Date.parse(item.publishStart) : NaN;
@@ -89,7 +93,7 @@ export function resolveCheckoutLines({ lines, catalogs, nowMs = Date.now() }) {
     if (!isOpen(item, nowMs)) throw new Error(`item-unavailable:${item.id}`);
 
     const qty = validateQuantity(item, original, kindRaw || kind);
-    const isZumba = kind === "addon" && item.id === "zumba-class";
+    const isZumba = kind === "addon" && isZumbaItemId(item.id);
     if (isZumba) {
       if (item.type !== "fixed" || money(item.price) !== 0) throw new Error("invalid-price:zumba-class");
       if (!original.attendeeId || !/^Chair needed: (Yes|No)$/.test(original.meta?.notes || "")) {
