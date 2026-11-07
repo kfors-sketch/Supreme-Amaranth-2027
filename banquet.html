@@ -6,7 +6,7 @@
   <meta name="description" content="Banquets and related items for registration.">
   <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/css/styles.css?v=banquets-v14"><!-- bump -->
-  <title>Banquets</title>
+  <title>Banquets, Registration, Directories, Transactions and More!</title>
 </head>
 
 <body data-page="banquets">
@@ -22,7 +22,7 @@
       <nav class="site-nav nav">
         <a href="home.html">Home</a>
         <span class="nav-current">Banquets</span>
-        <a href="supreme-addons.html">Supreme Council Add-Ons</a>
+        <a href="banquet.html" aria-current="page">Banquets, Registration, Directories, Transactions and More!</a>
                 <a href="tours.html" data-tours-link>Tours</a>
 <!-- <a href="product-catalog.html" data-catalog-link>Product Catalog</a> -->
         
@@ -38,7 +38,7 @@
   </header>
 
   <main class="container mt-lg">
-    <h1 class="page-title">Banquets</h1>
+    <h1 class="page-title">Banquets, Registration, Directories, Transactions and More!</h1>
 
     <div id="banquet-list" class="grid-2"></div>
 
@@ -105,8 +105,12 @@
     </section>
 
     <section class="panel">
-      <h2>Banquets</h2>
+      <h2>Banquets and Meals</h2>
       <div id="banquets"></div>
+    </section>
+    <section class="panel" id="registration-and-more">
+      <h2>Registration and More</h2>
+      <div class="grid-2 mt-lg" id="addonsGrid"></div>
     </section>
   </main>
 
@@ -116,7 +120,7 @@
       <nav class="site-nav nav footer-nav">
         <a href="home.html">Home</a>
         <span class="nav-current">Banquets</span>
-        <a href="supreme-addons.html">Supreme Council Add-Ons</a>
+        <a href="banquet.html" aria-current="page">Banquets, Registration, Directories, Transactions and More!</a>
                 <a href="tours.html" data-tours-link>Tours</a>
 <!-- <a href="product-catalog.html" data-catalog-link>Product Catalog</a> -->
         
@@ -587,6 +591,14 @@ if (!address1) missing.push('Address line 1');
     .att-card{display:flex;gap:8px;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.78);border:1px solid rgba(0,0,0,0.06);border-radius:10px;padding:8px;margin:6px 0}
     .banquet-card{background:rgba(255,255,255,0.40);border:1px solid rgba(229,231,235,0.45);border-radius:10px;padding:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);backdrop-filter:saturate(120%) blur(2px);-webkit-backdrop-filter:saturate(120%) blur(2px)}
     .grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .addon .row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+    .addon label{display:flex;flex-direction:column;gap:6px}
+    .addon input,.addon select{padding:.55rem .7rem;border:1px solid #d1d5db;border-radius:.5rem;background:rgba(255,255,255,0.9)}
+    .transportation-box .transport-passenger label{display:flex;flex-direction:column;gap:6px}
+    @media (max-width: 760px){
+      .grid-3{grid-template-columns:1fr}
+      .transportation-box .transport-passenger{grid-template-columns:1fr !important}
+    }
   </style>
 
   <!-- Core site scripts -->
@@ -596,6 +608,70 @@ if (!address1) missing.push('Address line 1');
   <script src="assets/js/cart.js"></script>
   <script src="assets/js/data-store.js"></script>
   <script src="assets/js/site-boot.js"></script>
+  <!-- Strip attendeeNotes from Add-Ons (unchanged behavior) -->
+  <script>
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.Cart && typeof Cart.addLine === 'function'){
+      const _add = Cart.addLine.bind(Cart);
+      let __lastAddonAlertAt = 0;
+      Cart.addLine = function(line){
+        if (line?.itemType !== 'addon') return _add(line);
+        try{
+          const copy = JSON.parse(JSON.stringify(line || {}));
+          if (copy?.meta && Object.prototype.hasOwnProperty.call(copy.meta,'attendeeNotes')){
+            delete copy.meta.attendeeNotes;
+          }
+                    // Ensure attendee court/jurisdiction is included for Stripe + chair emails
+          try{
+            const st = (window.Cart && typeof Cart.get === 'function') ? (Cart.get() || {}) : {};
+            const attId = copy?.attendeeId;
+            const att = (st.attendees||[]).find(a => String(a.id) === String(attId));
+            if (att){
+              copy.meta = copy.meta || {};
+              if (copy.meta.court == null) copy.meta.court = att.courtName || '';
+              if (copy.meta.court_number == null) copy.meta.court_number = att.courtNumber || '';
+              if (copy.meta.jurisdiction == null) copy.meta.jurisdiction = att.jurisdiction || '';
+              if (copy.meta.memberType == null) copy.meta.memberType = att.memberType || '';
+              if (copy.meta.attendeeName == null) copy.meta.attendeeName = att.name || '';
+              if (copy.meta.attendeeTitle == null) copy.meta.attendeeTitle = att.title || '';
+              if (copy.meta.attendeeEmail == null) copy.meta.attendeeEmail = att.email || '';
+              if (copy.meta.attendeePhone == null) copy.meta.attendeePhone = att.phone || '';
+            }
+          }catch(e){}
+
+const out = _add(copy);
+
+          // ✅ Match Banquets UX: ping + confirmation popup (addons page only)
+          try {
+            const isAddon = String(copy?.itemType || '') === 'addon';
+            const now = Date.now();
+            if (isAddon && (now - __lastAddonAlertAt) > 250) {
+              __lastAddonAlertAt = now;
+              try { localStorage.setItem('amaranth_cart_ping', String(now)); } catch(e) {}
+            }
+          } catch(e) {}
+
+          return out;
+        }catch(e){
+          const out = _add(line);
+
+          // best-effort UX even on fallback path
+          try {
+            const isAddon = String(line?.itemType || '') === 'addon';
+            const now = Date.now();
+            if (isAddon && (now - __lastAddonAlertAt) > 250) {
+              __lastAddonAlertAt = now;
+              try { localStorage.setItem('amaranth_cart_ping', String(now)); } catch(e) {}
+            }
+          } catch(e) {}
+
+          return out;
+        }
+      };
+    }
+  });
+  </script>
+  <script src="assets/js/supreme-addons.js?v=combined-order-v1"></script>
 
   <!-- Hide Product Catalog link if no visible items -->
   <script>
