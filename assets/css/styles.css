@@ -231,3 +231,11 @@ body.help-modal-open{
   outline:2px solid #1d4ed8;
   outline-offset:2px;
 }
+
+/* Fill the screen on phones held vertically */
+@media (max-width: 767px) and (orientation: portrait) {
+  .wallpaper::before {
+    background-size: cover;
+    background-position: center center;
+  }
+}
