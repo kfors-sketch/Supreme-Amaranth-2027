@@ -9,6 +9,7 @@ if (typeof window !== "undefined") {
 }
 
   const GRID_ID = "addonsGrid";
+  const zumbaIds = new Set(["zumba", "zumba-class"]);
 
   // --- Simple money formatter (USD) ---
   function money(n) {
@@ -452,7 +453,7 @@ if (typeof window !== "undefined") {
     const quantity = Math.max(1, toNumber(qty || 1, 1));
     const price = toNumber(amount || addon.price || 0, 0);
 
-    if ((!transport && addon.id !== "zumba-class" && !price) || price < 0) {
+    if ((!transport && !zumbaIds.has(addon.id) && !price) || price < 0) {
       alert("Please enter a valid amount.");
       return { ok: false, error: "invalid_amount" };
     }
@@ -663,7 +664,7 @@ if (notes) {
     let chairCheckbox = null;
 if (isTransportation(addon)) {
       transportControls = buildTransportationControls(addon, row);
-    } else if (addon.id === "zumba-class") {
+    } else if (zumbaIds.has(addon.id)) {
       const chairLabel = document.createElement("label");
       chairLabel.style.cssText = "flex-direction:row;align-items:center";
       chairCheckbox = document.createElement("input");
