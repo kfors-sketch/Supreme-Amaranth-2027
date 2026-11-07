@@ -89,15 +89,22 @@ export function resolveCheckoutLines({ lines, catalogs, nowMs = Date.now() }) {
     if (!isOpen(item, nowMs)) throw new Error(`item-unavailable:${item.id}`);
 
     const qty = validateQuantity(item, original, kindRaw || kind);
+    const isZumba = kind === "addon" && item.id === "zumba-class";
+    if (isZumba) {
+      if (item.type !== "fixed" || money(item.price) !== 0) throw new Error("invalid-price:zumba-class");
+      if (!original.attendeeId || !/^Chair needed: (Yes|No)$/.test(original.meta?.notes || "")) {
+        throw new Error("zumba-attendee-and-chair-answer-required");
+      }
+    }
     const attendeeKey = String(original.attendeeId || "");
     const quantityKey = `${kind}:${item.id}:${attendeeKey}`;
     const aggregateQty = (quantities.get(quantityKey) || 0) + qty;
-    const perAttendee = Number(item.limitPerAttendee || item.limit || 0);
+    const perAttendee = isZumba ? 1 : Number(item.limitPerAttendee || item.limit || 0);
     if (perAttendee > 0 && attendeeKey && aggregateQty > perAttendee) {
       throw new Error(`quantity-limit:${item.id}`);
     }
     quantities.set(quantityKey, aggregateQty);
-    const unitPrice = configuredPrice(item, original, kindRaw || kind);
+    const unitPrice = isZumba ? 0 : configuredPrice(item, original, kindRaw || kind);
     const resolved = {
       ...original,
       itemId: item.id,

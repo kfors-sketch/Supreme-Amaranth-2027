@@ -1,3 +1,4 @@
+import { isFreeZumbaSession } from "./order-utils.js";
 // /api/admin/webhook-router.js
 import {
   REQ_OK,
@@ -80,7 +81,7 @@ export async function handleWebhookRoute(req, res, ctx = {}) {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded": {
         const session = event.data.object;
-        if (session?.payment_status !== "paid") break;
+        if (session?.payment_status !== "paid" && !isFreeZumbaSession(session)) break;
         const mode =
           typeof resolveModeFromSession === "function"
             ? await resolveModeFromSession(session)

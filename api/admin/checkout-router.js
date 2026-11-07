@@ -466,13 +466,22 @@ function normalizeCountryCode2(raw) {
               }
             }
 
+            const freeZumbaOrder = subtotalCents === 0 &&
+              lines.some((line) => line.itemType === "addon" && line.itemId === "zumba-class");
+
             const session = await stripe.checkout.sessions.create({
               mode: "payment",
               line_items,
               customer_email: purchaser.email || undefined,
+              ...(freeZumbaOrder
+                ? { customer_creation: "always" }
+                : {}),
               success_url: successUrl,
               cancel_url: cancelUrl,
               metadata: {
+                ...(freeZumbaOrder
+                  ? { free_zumba_registration: "true" }
+                  : {}),
                 order_channel: orderChannel,
                 order_mode: orderChannel,
                 purchaser_name: purchaser.name || "",

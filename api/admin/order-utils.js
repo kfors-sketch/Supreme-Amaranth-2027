@@ -68,7 +68,7 @@ export async function saveOrderFromSession(sessionLike, extra = {}) {
   const sid = typeof sessionLike === "string" ? sessionLike : sessionLike.id;
   const { session: s, lineItems } = await fetchSessionAndItems(stripe, sid);
 
-  if (s?.mode !== "payment" || s?.payment_status !== "paid") {
+  if (s?.mode !== "payment" || (s?.payment_status !== "paid" && !isFreeZumbaSession(s))) {
     const err = new Error("checkout-session-not-paid");
     err.code = "checkout-session-not-paid";
     throw err;
@@ -258,6 +258,12 @@ export async function saveOrderFromSession(sessionLike, extra = {}) {
     await kvSetSafe(`order:${order.id}:receipt_view_hash`, md.receipt_view_hash);
   }
   return order;
+}
+
+export function isFreeZumbaSession(session) {
+  return session?.payment_status === "no_payment_required" &&
+    session.amount_total === 0 &&
+    session.metadata?.free_zumba_registration === "true";
 }
 
 export async function applyRefundToOrder(chargeId, refund) {
