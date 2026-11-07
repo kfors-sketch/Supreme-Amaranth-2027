@@ -832,6 +832,16 @@ amtWrap.appendChild(amtLabel);
       row.appendChild(attendeeWrap);
     }
     card.appendChild(title);
+    if (addon.id === "supreme-council-shirt") {
+      const image = document.createElement("img");
+      image.src = "/assets/img/supreme-council-2027-shirt.jpg";
+      image.alt = "White Supreme Council 2027 commemorative shirt";
+      image.width = 355;
+      image.height = 325;
+      image.loading = "lazy";
+      image.style.cssText = "display:block;max-width:100%;height:auto";
+      card.appendChild(image);
+    }
     if (addon.description) card.appendChild(desc);
     card.appendChild(row);
     card.appendChild(btnWrap);
