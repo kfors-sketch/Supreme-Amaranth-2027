@@ -452,7 +452,7 @@ if (typeof window !== "undefined") {
     const quantity = Math.max(1, toNumber(qty || 1, 1));
     const price = toNumber(amount || addon.price || 0, 0);
 
-    if ((!transport && !price) || price < 0) {
+    if ((!transport && addon.id !== "zumba-class" && !price) || price < 0) {
       alert("Please enter a valid amount.");
       return { ok: false, error: "invalid_amount" };
     }
@@ -660,8 +660,19 @@ if (notes) {
     let notesInput = null;
     let wearSelect = null;
     let transportControls = null;
+    let chairSelect = null;
 if (isTransportation(addon)) {
       transportControls = buildTransportationControls(addon, row);
+    } else if (addon.id === "zumba-class") {
+      const chairLabel = document.createElement("label");
+      chairLabel.textContent = "Do you need a chair?";
+      chairSelect = document.createElement("select");
+      chairSelect.required = true;
+      chairSelect.add(new Option("Select Yes or No", ""));
+      chairSelect.add(new Option("Yes", "Yes"));
+      chairSelect.add(new Option("No", "No"));
+      chairLabel.appendChild(chairSelect);
+      row.appendChild(chairLabel);
     } else if (addon.type === "amount") {
       const amtWrap = document.createElement("label");
       const amtLabel = document.createElement("span");
@@ -842,6 +853,11 @@ amtWrap.appendChild(amtLabel);
       card.appendChild(image);
     }
     if (addon.description) card.appendChild(desc);
+    if (chairSelect) {
+      const priceLabel = document.createElement("p");
+      priceLabel.textContent = "Free · One registration per attendee";
+      card.appendChild(priceLabel);
+    }
     card.appendChild(row);
     card.appendChild(btnWrap);
 
@@ -864,7 +880,9 @@ amtWrap.appendChild(amtLabel);
       let qty = 1;
       let amount = addon.price;
       let variant = null;
-      const notes =
+      if (chairSelect && !chairSelect.reportValidity()) return;
+
+      const notes = chairSelect ? `Chair needed: ${chairSelect.value}` :
         notesInput && typeof notesInput.value === "string"
           ? notesInput.value.trim()
           : "";
