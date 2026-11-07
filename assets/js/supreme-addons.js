@@ -623,9 +623,8 @@ if (notes) {
   function renderEmptyMessage(grid) {
     grid.innerHTML = `
       <section class="card">
-        <h2>No add-ons available</h2>
+        <h2>${grid.dataset.addonGroup === "transportation" ? "Airport transportation is currently unavailable" : "No add-ons available"}</h2>
         <p>
-          There are currently no Supreme add-ons open for registration.
           Please check back later or contact the committee with any questions.
         </p>
       </section>
@@ -998,7 +997,12 @@ amtWrap.appendChild(amtLabel);
       }
     }
 
-    const addons = await loadAddons();
+    const addonGroup = grid.dataset.addonGroup;
+    const addons = (await loadAddons()).filter((addon) => {
+      if (addonGroup === "transportation") return isTransportation(addon);
+      if (addonGroup === "general") return !isTransportation(addon);
+      return true;
+    });
     if (!addons.length) {
       renderEmptyMessage(grid);
       return;
