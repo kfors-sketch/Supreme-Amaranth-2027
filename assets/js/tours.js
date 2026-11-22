@@ -13,6 +13,7 @@
     t.name=String(t.name||t.title||"").trim()||t.id||"Tour";
     t.description=String(t.description||t.notes||"").trim();
     t.location=String(t.location||t.meetingLocation||"").trim();
+    t.transportation=String(t.transportation||"").trim();
     t.tourDateTime=t.tourDateTime||t.dateTime||t.start||"";
     t.price=toNumber(t.price,0);
     t.active=t.active===undefined||t.active===null?true:t.active!==false;
@@ -123,7 +124,7 @@ card.appendChild(title);
     card.appendChild(desc);
    }
     const details=document.createElement("div"); details.className="tiny"; details.style.cssText="opacity:.9;margin:.25rem 0 .75rem;line-height:1.45;";
-    const bits=[]; if(tour.tourDateTime)bits.push(`<strong>Date/Time:</strong> ${esc(tour.tourDateTime)}`); if(tour.location)bits.push(`<strong>Meeting Location:</strong> ${esc(tour.location)}`); bits.push(`<strong>Price:</strong> ${money(tour.price)} per attendee`);
+    const bits=[]; if(tour.tourDateTime)bits.push(`<strong>Date/Time:</strong> ${esc(tour.tourDateTime)}`); if(tour.location)bits.push(`<strong>Meeting Location:</strong> ${esc(tour.location)}`); if(tour.transportation)bits.push(`<strong>Transportation:</strong> ${esc(tour.transportation)}`); bits.push(`<strong>Price:</strong> ${money(tour.price)} per attendee`);
     details.innerHTML=bits.join("<br>"); card.appendChild(details);
 
     const hint=document.createElement("p"); hint.className="tiny"; hint.style.cssText="opacity:.85;margin:.25rem 0 .75rem;";
