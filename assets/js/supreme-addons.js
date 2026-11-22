@@ -10,6 +10,7 @@ if (typeof window !== "undefined") {
 
   const GRID_ID = "addonsGrid";
   const zumbaIds = new Set(["zumba", "zumba-class"]);
+  const freeRegistrationIds = new Set([...zumbaIds, "choir", "ritualistic-excellence-competition"]);
 
   // --- Simple money formatter (USD) ---
   function money(n) {
@@ -453,7 +454,7 @@ if (typeof window !== "undefined") {
     const quantity = Math.max(1, toNumber(qty || 1, 1));
     const price = toNumber(amount || addon.price || 0, 0);
 
-    if ((!transport && !zumbaIds.has(addon.id) && !price) || price < 0) {
+    if ((!transport && !freeRegistrationIds.has(addon.id) && !price) || price < 0) {
       alert("Please enter a valid amount.");
       return { ok: false, error: "invalid_amount" };
     }
@@ -777,7 +778,7 @@ amtWrap.appendChild(amtLabel);
       row.appendChild(qtyWrap);
     } else {
       const priceP = document.createElement("p");
-      priceP.innerHTML = `<strong>${money(addon.price)}</strong> each (limit 1 per attendee)`;
+      priceP.innerHTML = freeRegistrationIds.has(addon.id) ? "Free · One registration per attendee" : `<strong>${money(addon.price)}</strong> each (limit 1 per attendee)`;
       card.appendChild(priceP);
     }
 
