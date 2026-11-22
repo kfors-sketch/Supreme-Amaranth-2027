@@ -5,6 +5,10 @@ export function isZumbaItemId(id) {
   return id === "zumba" || id === "zumba-class";
 }
 
+export function isFreeRegistrationItemId(id) {
+  return isZumbaItemId(id) || id === "choir" || id === "ritualistic-excellence-competition";
+}
+
 function isOpen(item, nowMs) {
   if (!item || item.active === false) return false;
   const start = item.publishStart ? Date.parse(item.publishStart) : NaN;
@@ -94,21 +98,23 @@ export function resolveCheckoutLines({ lines, catalogs, nowMs = Date.now() }) {
 
     const qty = validateQuantity(item, original, kindRaw || kind);
     const isZumba = kind === "addon" && isZumbaItemId(item.id);
-    if (isZumba) {
-      if (item.type !== "fixed" || money(item.price) !== 0) throw new Error("invalid-price:zumba-class");
-      if (!original.attendeeId || !/^Chair needed: (Yes|No)$/.test(original.meta?.notes || "")) {
+    const isFreeRegistration = kind === "addon" && isFreeRegistrationItemId(item.id);
+    if (isFreeRegistration) {
+      if (item.type !== "fixed" || money(item.price) !== 0) throw new Error(`invalid-price:${item.id}`);
+      if (!original.attendeeId) throw new Error(`attendee-required:${item.id}`);
+      if (isZumba && !/^Chair needed: (Yes|No)$/.test(original.meta?.notes || "")) {
         throw new Error("zumba-attendee-and-chair-answer-required");
       }
     }
     const attendeeKey = String(original.attendeeId || "");
     const quantityKey = `${kind}:${item.id}:${attendeeKey}`;
     const aggregateQty = (quantities.get(quantityKey) || 0) + qty;
-    const perAttendee = isZumba ? 1 : Number(item.limitPerAttendee || item.limit || 0);
+    const perAttendee = isFreeRegistration ? 1 : Number(item.limitPerAttendee || item.limit || 0);
     if (perAttendee > 0 && attendeeKey && aggregateQty > perAttendee) {
       throw new Error(`quantity-limit:${item.id}`);
     }
     quantities.set(quantityKey, aggregateQty);
-    const unitPrice = isZumba ? 0 : configuredPrice(item, original, kindRaw || kind);
+    const unitPrice = isFreeRegistration ? 0 : configuredPrice(item, original, kindRaw || kind);
     const resolved = {
       ...original,
       itemId: item.id,

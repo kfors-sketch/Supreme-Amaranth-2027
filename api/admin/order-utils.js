@@ -68,7 +68,7 @@ export async function saveOrderFromSession(sessionLike, extra = {}) {
   const sid = typeof sessionLike === "string" ? sessionLike : sessionLike.id;
   const { session: s, lineItems } = await fetchSessionAndItems(stripe, sid);
 
-  if (s?.mode !== "payment" || (s?.payment_status !== "paid" && !isFreeZumbaSession(s))) {
+  if (s?.mode !== "payment" || (s?.payment_status !== "paid" && !isFreeRegistrationSession(s))) {
     const err = new Error("checkout-session-not-paid");
     err.code = "checkout-session-not-paid";
     throw err;
@@ -260,10 +260,11 @@ export async function saveOrderFromSession(sessionLike, extra = {}) {
   return order;
 }
 
-export function isFreeZumbaSession(session) {
+export function isFreeRegistrationSession(session) {
   return session?.payment_status === "no_payment_required" &&
     session.amount_total === 0 &&
-    session.metadata?.free_zumba_registration === "true";
+    (session.metadata?.free_registration === "true" ||
+      session.metadata?.free_zumba_registration === "true");
 }
 
 export async function applyRefundToOrder(chargeId, refund) {

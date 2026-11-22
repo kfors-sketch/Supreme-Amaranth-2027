@@ -10,7 +10,7 @@ import {
 import { storeTransportationPayload } from "./transportation.js";
 import {
   calculateProcessingFeeCents,
-  isZumbaItemId,
+  isFreeRegistrationItemId,
   loadCheckoutCatalogs,
   resolveCheckoutLines,
 } from "./checkout-pricing.js";
@@ -467,21 +467,21 @@ function normalizeCountryCode2(raw) {
               }
             }
 
-            const freeZumbaOrder = subtotalCents === 0 &&
-              lines.some((line) => line.itemType === "addon" && isZumbaItemId(line.itemId));
+            const freeRegistrationOrder = subtotalCents === 0 &&
+              lines.some((line) => line.itemType === "addon" && isFreeRegistrationItemId(line.itemId));
 
             const session = await stripe.checkout.sessions.create({
               mode: "payment",
               line_items,
               customer_email: purchaser.email || undefined,
-              ...(freeZumbaOrder
+              ...(freeRegistrationOrder
                 ? { customer_creation: "always" }
                 : {}),
               success_url: successUrl,
               cancel_url: cancelUrl,
               metadata: {
-                ...(freeZumbaOrder
-                  ? { free_zumba_registration: "true" }
+                ...(freeRegistrationOrder
+                  ? { free_registration: "true" }
                   : {}),
                 order_channel: orderChannel,
                 order_mode: orderChannel,
